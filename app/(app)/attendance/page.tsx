@@ -1,0 +1,275 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/auth-context';
+import { supabase, AttendanceRecord, Profile } from '@/lib/supabase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { LogIn, LogOut, Clock, Calendar, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+
+export default function AttendancePage() {
+  const { profile } = useAuth();
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [teamRecords, setTeamRecords] = useState<{ record: AttendanceRecord; employee: Profile }[]>([]);
+  const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
+  const [clockLoading, setClockLoading] = useState(false);
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear] = useState(new Date().getFullYear());
+
+  const isManager = profile?.role === 'manager';
+  const isHr = profile?.role === 'hr_admin';
+
+  async function loadMyRecords() {
+    if (!profile) return;
+    const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+    const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+
+    const { data } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('employee_id', profile.id)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date', { ascending: false });
+    setRecords(data ?? []);
+
+    const today = new Date().toISOString().split('T')[0];
+    const { data: todayData } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('employee_id', profile.id)
+      .eq('date', today)
+      .maybeSingle();
+    setTodayRecord(todayData);
+  }
+
+  async function loadTeamRecords() {
+    if (!profile || (!isManager && !isHr)) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data: team } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq(isManager ? 'manager_id' : 'is_active', isManager ? profile.id : true)
+      .eq('is_active', true);
+
+    if (!team || team.length === 0) {
+      setTeamRecords([]);
+      return;
+    }
+
+    const { data: atts } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('date', today)
+      .in('employee_id', team.map((t) => t.id));
+
+    const combined = (team ?? []).map((emp) => {
+      const record = (atts ?? []).find((a) => a.employee_id === emp.id);
+      return { record: record ?? null, employee: emp };
+    }).filter((x) => x.record !== null) as { record: AttendanceRecord; employee: Profile }[];
+
+    setTeamRecords(combined);
+  }
+
+  useEffect(() => {
+    loadMyRecords();
+  }, [profile, month, year]);
+
+  useEffect(() => {
+    if (isManager || isHr) loadTeamRecords();
+  }, [profile]);
+
+  async function handleCheckIn() {
+    if (!profile) return;
+    setClockLoading(true);
+    const now = new Date().toISOString();
+    const today = new Date().toISOString().split('T')[0];
+    const hour = new Date().getHours();
+    const status = hour >= 9 ? 'late' : 'present';
+
+    const { data } = await supabase
+      .from('attendance_records')
+      .upsert({
+        employee_id: profile.id,
+        date: today,
+        check_in: now,
+        status,
+      })
+      .select('*')
+      .maybeSingle();
+    setTodayRecord(data);
+    setClockLoading(false);
+    loadMyRecords();
+  }
+
+  async function handleCheckOut() {
+    if (!profile || !todayRecord) return;
+    setClockLoading(true);
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from('attendance_records')
+      .update({ check_out: now })
+      .eq('id', todayRecord.id)
+      .select('*')
+      .maybeSingle();
+    setTodayRecord(data);
+    setClockLoading(false);
+    loadMyRecords();
+  }
+
+  if (!profile) return null;
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  function statusBadge(status: string) {
+    switch (status) {
+      case 'present': return <Badge className="bg-green-100 text-green-700 hover:bg-green-100"><CheckCircle2 className="mr-1 h-3 w-3" />Present</Badge>;
+      case 'late': return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100"><AlertCircle className="mr-1 h-3 w-3" />Late</Badge>;
+      case 'absent': return <Badge className="bg-red-100 text-red-700 hover:bg-red-100"><XCircle className="mr-1 h-3 w-3" />Absent</Badge>;
+      case 'half_day': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100"><Clock className="mr-1 h-3 w-3" />Half Day</Badge>;
+      default: return <Badge>{status}</Badge>;
+    }
+  }
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#051536]">Attendance</h1>
+        <p className="text-sm text-muted-foreground mt-1">Track your daily check-in and check-out</p>
+      </div>
+
+      {/* Clock Card */}
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardContent className="p-6">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#032364]/10 shrink-0">
+                <Clock className="h-7 w-7 text-[#032364]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#051536]">Today&apos;s Attendance</h3>
+                <p className="text-sm text-muted-foreground">
+                  {todayRecord?.check_in
+                    ? `Checked in at ${new Date(todayRecord.check_in).toLocaleTimeString()}`
+                    : 'You have not checked in today'}
+                  {todayRecord?.check_out
+                    ? ` • Checked out at ${new Date(todayRecord.check_out).toLocaleTimeString()}`
+                    : todayRecord?.check_in
+                    ? ' • Still working'
+                    : ''}
+                </p>
+                {todayRecord && <div className="mt-1">{statusBadge(todayRecord.status)}</div>}
+              </div>
+            </div>
+            <div className="flex w-full gap-3 sm:w-auto">
+              <Button
+                onClick={handleCheckIn}
+                disabled={clockLoading || !!todayRecord?.check_in}
+                className="rounded-lg bg-[#032364] hover:bg-[#032364]/90"
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Check In
+              </Button>
+              <Button
+                onClick={handleCheckOut}
+                disabled={clockLoading || !todayRecord?.check_in || !!todayRecord?.check_out}
+                variant="outline"
+                className="rounded-lg"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Check Out
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Team Attendance (Manager/HR) */}
+      {(isManager || isHr) && (
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-[#051536]">Team Attendance Today</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {teamRecords.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No team members checked in today.</p>
+            ) : (
+              <div className="space-y-2">
+                {teamRecords.map(({ record, employee }) => (
+                  <div key={record.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white">
+                        {employee.first_name[0]}{employee.last_name[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{employee.first_name} {employee.last_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          In: {record.check_in ? new Date(record.check_in).toLocaleTimeString() : '—'}
+                          {record.check_out && ` • Out: ${new Date(record.check_out).toLocaleTimeString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    {statusBadge(record.status)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* My Attendance History */}
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base font-semibold text-[#051536]">My Attendance History</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <select
+                value={month}
+                onChange={(e) => setMonth(Number(e.target.value))}
+                className="rounded-lg border border-input bg-background px-2 py-1 text-sm"
+              >
+                {monthNames.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="rounded-lg border border-input bg-background px-2 py-1 text-sm"
+              >
+                {[new Date().getFullYear(), new Date().getFullYear() - 1].map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {records.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No attendance records for this period.</p>
+          ) : (
+            <div className="space-y-2">
+              {records.map((rec) => (
+                <div key={rec.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-xs font-medium">
+                      {new Date(rec.date).getDate()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{new Date(rec.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-muted-foreground">
+                        In: {rec.check_in ? new Date(rec.check_in).toLocaleTimeString() : '—'}
+                        {rec.check_out && ` • Out: ${new Date(rec.check_out).toLocaleTimeString()}`}
+                      </p>
+                    </div>
+                  </div>
+                  {statusBadge(rec.status)}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
