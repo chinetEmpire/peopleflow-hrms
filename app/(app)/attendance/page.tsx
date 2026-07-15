@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { formatDuration, attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
 import { supabase, AttendanceRecord, Profile } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogIn, LogOut, Clock, Calendar, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { LogIn, LogOut, Clock, Calendar, CheckCircle2, XCircle, AlertCircle, MapPin } from 'lucide-react';
 
 export default function AttendancePage() {
   const { profile } = useAuth();
@@ -14,11 +15,43 @@ export default function AttendancePage() {
   const [teamRecords, setTeamRecords] = useState<{ record: AttendanceRecord; employee: Profile }[]>([]);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [clockLoading, setClockLoading] = useState(false);
+  const [liveDuration, setLiveDuration] = useState('00:00:00');
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
 
   const isManager = profile?.role === 'manager';
   const isHr = profile?.role === 'hr_admin';
+
+  const getCurrentLocation = async (): Promise<{ lat: number; lng: number } | null> => {
+    if (!navigator.geolocation) return null;
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({ lat: position.coords.latitude, lng: position.coords.longitude });
+        },
+        () => {
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      );
+    });
+  };
+
+  async function reconcileAttendanceRecord(record: AttendanceRecord | null) {
+    if (!record || !record.check_in || record.check_out) return record;
+    if (!shouldAutoCheckout(record.check_in, record.check_out)) return record;
+
+    const checkoutAt = getAutoCheckoutTime(record.check_in);
+    const { data } = await supabase
+      .from('attendance_records')
+      .update({ check_out: checkoutAt, status: 'absent' })
+      .eq('id', record.id)
+      .select('*')
+      .maybeSingle();
+
+    return data ?? record;
+  }
 
   async function loadMyRecords() {
     if (!profile) return;
@@ -41,7 +74,9 @@ export default function AttendancePage() {
       .eq('employee_id', profile.id)
       .eq('date', today)
       .maybeSingle();
-    setTodayRecord(todayData);
+
+    const normalized = await reconcileAttendanceRecord(todayData);
+    setTodayRecord(normalized);
   }
 
   async function loadTeamRecords() {
@@ -65,12 +100,18 @@ export default function AttendancePage() {
       .eq('date', today)
       .in('employee_id', team.map((t) => t.id));
 
-    const combined = (team ?? []).map((emp) => {
-      const record = (atts ?? []).find((a) => a.employee_id === emp.id);
-      return { record: record ?? null, employee: emp };
-    }).filter((x) => x.record !== null) as { record: AttendanceRecord; employee: Profile }[];
+    const combined = await Promise.all(
+      (team ?? []).map(async (emp) => {
+        const record = (atts ?? []).find((a) => a.employee_id === emp.id) ?? null;
+        const reconciled = await reconcileAttendanceRecord(record);
+        return {
+          record: reconciled,
+          employee: emp,
+        };
+      }),
+    );
 
-    setTeamRecords(combined);
+    setTeamRecords(combined.filter((x) => x.record !== null) as { record: AttendanceRecord; employee: Profile }[]);
   }
 
   useEffect(() => {
@@ -81,13 +122,38 @@ export default function AttendancePage() {
     if (isManager || isHr) loadTeamRecords();
   }, [profile]);
 
+  useEffect(() => {
+    if (!todayRecord?.check_in) {
+      setLiveDuration('00:00:00');
+      return;
+    }
+
+    const updateDuration = () => {
+      const startTime = new Date(todayRecord.check_in).getTime();
+      const endTime = todayRecord.check_out ? new Date(todayRecord.check_out).getTime() : Date.now();
+      setLiveDuration(formatDuration(endTime - startTime));
+    };
+
+    updateDuration();
+
+    if (todayRecord.check_out) return;
+
+    const timer = window.setInterval(updateDuration, 1000);
+    return () => window.clearInterval(timer);
+  }, [todayRecord]);
+
   async function handleCheckIn() {
     if (!profile) return;
     setClockLoading(true);
+    const location = await getCurrentLocation();
+    if (!location) {
+      window.alert('Unable to capture your location. Please allow location access and try again.');
+      setClockLoading(false);
+      return;
+    }
+
     const now = new Date().toISOString();
     const today = new Date().toISOString().split('T')[0];
-    const hour = new Date().getHours();
-    const status = hour >= 9 ? 'late' : 'present';
 
     const { data } = await supabase
       .from('attendance_records')
@@ -95,7 +161,9 @@ export default function AttendancePage() {
         employee_id: profile.id,
         date: today,
         check_in: now,
-        status,
+        check_in_lat: location.lat,
+        check_in_lng: location.lng,
+        status: 'present',
       })
       .select('*')
       .maybeSingle();
@@ -105,12 +173,26 @@ export default function AttendancePage() {
   }
 
   async function handleCheckOut() {
-    if (!profile || !todayRecord) return;
+    if (!profile || !todayRecord || !todayRecord.check_in) return;
     setClockLoading(true);
+    const location = await getCurrentLocation();
+    if (!location) {
+      window.alert('Unable to capture your location. Please allow location access and try again.');
+      setClockLoading(false);
+      return;
+    }
+
     const now = new Date().toISOString();
+    const status = attendanceStatusFromDuration(todayRecord.check_in, now);
+
     const { data } = await supabase
       .from('attendance_records')
-      .update({ check_out: now })
+      .update({
+        check_out: now,
+        check_out_lat: location.lat,
+        check_out_lng: location.lng,
+        status,
+      })
       .eq('id', todayRecord.id)
       .select('*')
       .maybeSingle();
@@ -160,6 +242,18 @@ export default function AttendancePage() {
                     ? ' • Still working'
                     : ''}
                 </p>
+                {todayRecord?.check_in_lat && todayRecord?.check_in_lng ? (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Check-in location: {todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng.toFixed(4)}
+                  </p>
+                ) : null}
+                {todayRecord?.check_out_lat && todayRecord?.check_out_lng ? (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Check-out location: {todayRecord.check_out_lat.toFixed(4)}, {todayRecord.check_out_lng.toFixed(4)}
+                  </p>
+                ) : null}
                 {todayRecord && <div className="mt-1">{statusBadge(todayRecord.status)}</div>}
               </div>
             </div>
@@ -208,7 +302,24 @@ export default function AttendancePage() {
                         <p className="text-xs text-muted-foreground">
                           In: {record.check_in ? new Date(record.check_in).toLocaleTimeString() : '—'}
                           {record.check_out && ` • Out: ${new Date(record.check_out).toLocaleTimeString()}`}
+                          {record.check_in && (
+                            <> • {formatDuration(
+                              new Date(record.check_out ?? Date.now()).getTime() - new Date(record.check_in).getTime(),
+                            )}</>
+                          )}
                         </p>
+                        {record.check_in_lat && record.check_in_lng ? (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {record.check_in_lat.toFixed(4)}, {record.check_in_lng.toFixed(4)}
+                          </p>
+                        ) : null}
+                        {record.check_out_lat && record.check_out_lng ? (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {record.check_out_lat.toFixed(4)}, {record.check_out_lng.toFixed(4)}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     {statusBadge(record.status)}
@@ -260,6 +371,11 @@ export default function AttendancePage() {
                       <p className="text-xs text-muted-foreground">
                         In: {rec.check_in ? new Date(rec.check_in).toLocaleTimeString() : '—'}
                         {rec.check_out && ` • Out: ${new Date(rec.check_out).toLocaleTimeString()}`}
+                        {rec.check_in && (
+                          <> • {formatDuration(
+                            new Date(rec.check_out ?? Date.now()).getTime() - new Date(rec.check_in).getTime(),
+                          )}</>
+                        )}
                       </p>
                     </div>
                   </div>

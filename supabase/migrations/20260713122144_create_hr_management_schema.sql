@@ -58,6 +58,8 @@ System audit trail for super admin monitoring.
 - Profiles viewable by authenticated users; editable by owner + hr_admin
 */
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Profiles table
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

@@ -37,6 +37,7 @@ const menuItems: NavItem[] = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
   { label: 'Attendance', href: '/attendance', icon: Calendar, roles: ['employee', 'manager', 'hr_admin'] },
   { label: 'Employees', href: '/employees', icon: Users, roles: ['hr_admin'] },
+  { label: 'Departments', href: '/departments', icon: Building2, roles: ['hr_admin', 'super_admin'] },
   { label: 'Time Off', href: '/time-off', icon: Clock, roles: ['employee', 'manager', 'hr_admin'] },
   { label: 'Reports', href: '/reports', icon: FileBarChart, roles: ['manager', 'hr_admin'] },
 ];

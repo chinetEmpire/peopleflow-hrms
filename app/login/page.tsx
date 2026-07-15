@@ -67,7 +67,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@vcgl.com"
+                  placeholder="you@vcgl.ng"
                   className="h-11 rounded-lg border-[#0000004c] pl-10"
                 />
               </div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          VCGL ONE — Human Resources Management Platform
+          VCGL ONE — Human Resources Management Platform- Created By IT Dept.
         </p>
       </div>
     </div>

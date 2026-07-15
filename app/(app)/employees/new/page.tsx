@@ -3,7 +3,7 @@
 import { useEffect, useState, Children } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, Profile, Role } from '@/lib/supabase';
+import { supabase, Profile, Role, Department } from '@/lib/supabase';
 import { callManageEmployee } from '@/lib/manage-employee';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,6 +137,7 @@ export default function AddEmployeePage() {
   const isAdmin = profile && ADMIN_ROLES.includes(profile.role as Role);
 
   const [managers, setManagers] = useState<Profile[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -154,9 +155,15 @@ export default function AddEmployeePage() {
     supabase
       .from('profiles')
       .select('id,first_name,last_name,role')
-      .in('role', ['manager', 'hr_admin'])
+      .in('role', ['manager', 'hr_admin', 'super_admin'])
       .eq('is_active', true)
       .then(({ data }) => setManagers((data as Profile[]) ?? []));
+
+    supabase
+      .from('departments')
+      .select('id,name')
+      .order('name')
+      .then(({ data }) => setDepartments((data as Department[]) ?? []));
   }, []);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -306,7 +313,20 @@ export default function AddEmployeePage() {
         {/* ── Work Information ──────────────────────────────────── */}
         <SectionCard icon={Briefcase} title="Work Information">
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-            <SelectField label="Department" value={form.department} onChange={(v) => update('department', v)} options={DEPARTMENTS} placeholder="Select department" />
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select value={form.department || '__none__'} onValueChange={(value) => update('department', value === '__none__' ? '' : value)}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No department</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Field label="Job Title" value={form.job_title} onChange={(v) => update('job_title', v)} placeholder="Software Engineer" />
             <Field label="Hire Date" type="date" value={form.hire_date} onChange={(v) => update('hire_date', v)} />
             <SelectField

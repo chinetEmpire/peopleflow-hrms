@@ -76,6 +76,10 @@ export interface AttendanceRecord {
   date: string;
   check_in: string | null;
   check_out: string | null;
+  check_in_lat: number | null;
+  check_in_lng: number | null;
+  check_out_lat: number | null;
+  check_out_lng: number | null;
   status: 'present' | 'absent' | 'late' | 'half_day';
   notes: string | null;
 }
@@ -87,6 +91,15 @@ export interface LeaveType {
   days_allowed: number;
   color: string;
   is_active: boolean;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  manager_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+  manager?: Profile;
 }
 
 export interface LeaveBalance {

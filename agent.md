@@ -1,253 +1,77 @@
+# AGENT.md
 
-# PROJECT.md
+# Engineering Guidance for AI Coding Agents
 
-# HR Management System
+## Project Summary
 
-## Vision
+This repository is a Next.js HR management application built with Supabase, Tailwind CSS, and shadcn/ui. The current implementation focuses on authentication, protected app routes, a dashboard shell, employee management, attendance, time-off, reports, settings, and security-related views.
 
-Build a modern Human Resource Management platform for organizations of all sizes.
+## Important Context
 
-The system should automate HR operations while remaining simple, secure, scalable and AI-ready.
+Before making changes:
 
----
+- Read this file and the current project documentation in context.md.
+- Review the existing app structure before introducing new features.
+- Preserve working behavior and avoid large rewrites unless necessary.
+- Prefer incremental improvements over complete redesigns.
 
-# Project Goals
+## Tech Stack
 
-The application manages the complete employee lifecycle.
+- Next.js 15 with App Router
+- React 18
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Supabase for auth and database access
 
-Major objectives:
+## Project Structure
 
-- Employee Management
-- Attendance
-- Leave Management
-- Reports
-- Company Communication
-- HR Analytics
+- app/ contains routes and layouts
+- app/(app)/ contains authenticated screens
+- components/ui/ contains reusable UI primitives
+- lib/ contains app logic, auth context, and shared helpers
+- supabase/ contains database migrations and Edge Functions
+- public/ contains static assets
 
----
+## Implementation Expectations
 
-# User Roles
+- Keep UI consistent with the existing design language.
+- Prefer reusable components from components/ui when possible.
+- Use the existing auth flow via lib/auth-context.tsx.
+- For employee-related changes, respect the Supabase edge function flow in supabase/functions/manage-employee/.
+- Keep feature work aligned with the current navigation and layout.
 
-## Employee
+## Current Priorities
 
-Features
+Implemented or in active progress:
 
-- Login
-- Dashboard
-- Update Profile
-- Attendance
-- Leave Requests
-- Leave Balance
-- Announcements
-- Company Policies
+- Authentication and protected routing
+- Dashboard shell and navigation
+- Employee management
+- Attendance module UI
+- Time-off module UI
+- Reports, settings, and security screens
 
----
+Planned next:
 
-## Manager
+- Stronger role-based access enforcement
+- More complete leave workflow
+- Departments and designations
+- Reporting enhancements
+- Audit and policy management
 
-Everything an Employee can do plus:
+## Coding Guidelines
 
-- Team Dashboard
-- Team Attendance
-- Team leave
-- Team Reports
+- Use TypeScript and keep types explicit where possible.
+- Follow the existing naming patterns in the codebase.
+- Avoid introducing new state management libraries unless there is a clear need.
+- Keep components focused and composable.
+- When database changes are needed, add migrations and update relevant TypeScript types.
 
----
+## Documentation Updates
 
-## HR Administrator
+Whenever a meaningful feature is added or changed, update:
 
-Features
-
-- Employee Management
-- Departments
-- Designations
-- Leave Management
-- Holidays
-- Reports
-- HR Analytics
-
----
-
-## Super Admin
-
-Full system access.
-
-Responsible for:
-- all hr features
-- Companies
-- Roles
-- Permissions
-- Integrations
-- Billing
-- Security
-- Audit Logs
-- System Settings
-
----
-
-# Core Modules
-
-Authentication
-
-Dashboard
-
-Employees
-
-Attendance
-
-Leave
-
-Departments
-
-Designations
-
-Announcements
-
-Documents
-
-Reports
-
-Notifications
-
-Settings
-
-Audit Logs
-
----
-
-# Current Status
-
-In Progress
-
-
-- Authentication
-- Base Layout
-- Routing
-- Initial UI
-- Supabase Connection
-- Dashboard
-- Employee Module
-
-Planned
-
-- Attendance
-- Leave
-- Departments
-- Reports
-
-Future
-
-- Payroll
-- Recruitment
-- AI Assistant
-- Multi-company Support
-
----
-
-# Business Rules
-
-Attendance
-
-- One Check-In per day.
-- Check-Out requires Check-In.
-- Attendance timestamps stored in GMT.
-- check-in below 8 hours is considered half day, after 24 hours if the user does not check out the system check the person out and record absent.
-
-
-Leave
-
-- Leave balance must be validated.
-- Approval workflow follows company policy.
-
-Employees
-
-- Email addresses are unique.
-- Employee IDs are unique.
-- Historical records should be preserved.
-
----
-
-# Future AI Features
-
-- AI HR Assistant
-- Resume Screening
-- Employee Chatbot
-- HR Analytics Assistant
-- Policy Assistant
-
----
-
-# Project Folder Structure
-
-main the one we have for now
-
----
-
-# Future Integrations
-
-- Microsoft 365
-- Google Workspace
-- Slack
-- Teams
-- Paystack
-- Flutterwave
-- Resend
-- Twilio
-
----
-
-# Development Priorities
-
-Priority 1
-
-Authentication
-
-Employees
-
-Dashboard
-
-Attendance
-
-Priority 2
-
-Leave
-
-Departments
-
-Designations
-
-Reports
-
-Priority 3
-
-Payroll
-
-Recruitment
-
-Performance
-
-Priority 4
-
-AI Features
-
-Mobile App
-
-Public API
-
-Multi-company
-
----
-
-# Success Criteria
-
-The system should be:
-
-- Secure
-- Fast
-- Responsive
-- Accessible
-- Production-ready
-- Easy to maintain
-- Easy to extend
-
-Every new feature should fit naturally into the existing architecture.
+- context.md for implementation status
+- project.md for product scope and roadmap
+- any related Supabase or setup documentation if behavior changes

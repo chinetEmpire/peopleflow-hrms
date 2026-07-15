@@ -3,30 +3,14 @@
 # Current Project Context
 
 Project Name: HR Management System (HRMS)
-
-Last Updated: July 14, 2026
-
+Last Updated: July 15, 2026
 Project Status: Active Development
 
 ---
 
 # Purpose
 
-This document provides AI coding agents with the current state of the project.
-
-Unlike PROJECT.md (which describes the product vision) and AGENT.md (which defines engineering standards), this file describes what currently exists in the codebase.
-
-Read this file before making any code changes.
-
----
-
-# Project Summary
-
-This project was initially scaffolded using Bolt.new and is now being developed and maintained in Visual Studio Code.
-
-The goal is to evolve the generated code into a production-grade HR Management SaaS while preserving existing functionality and improving architecture over time.
-
-Refactor incrementally. Do not rewrite working modules unless necessary.
+This document describes the current implementation state of the project so that future changes stay aligned with the existing app.
 
 ---
 
@@ -34,7 +18,7 @@ Refactor incrementally. Do not rewrite working modules unless necessary.
 
 Frontend
 - Next.js 15 (App Router)
-- React 19
+- React 18.2.0
 - TypeScript
 - Tailwind CSS
 - shadcn/ui
@@ -46,7 +30,7 @@ Backend
 - Supabase Storage
 
 Deployment
-- Vercel
+- Netlify (configured via netlify.toml)
 
 Repository
 - GitHub
@@ -54,155 +38,107 @@ Repository
 Development
 - Visual Studio Code
 
-AI Assistants
-- ChatGPT
-- Codex
-- Claude Code
-- GitHub Copilot (optional)
-
 ---
 
 # Current Application State
 
-The application was generated using Bolt.new.
-
-Existing code should be treated as the starting point.
-
-Before modifying any feature:
-
-- Understand the existing implementation.
-- Preserve working functionality.
-- Refactor only when beneficial.
-- Avoid unnecessary rewrites.
+The app is a working HR management starter with a protected dashboard experience and a growing set of HR modules. The project should be evolved incrementally rather than rewritten wholesale.
 
 ---
 
 # Implemented Features
 
-The following are believed to be available (verify against the codebase):
+The following features are present in the codebase:
 
-- Authentication
-- Application layout
-- Navigation
-- Dashboard UI
-- Initial employee pages
-- Supabase integration
-- Basic routing
-- Shared UI components
-
-Whenever a feature is completed, update this section.
+- Authentication flow using Supabase Auth
+- Protected app layout and navigation shell
+- Role-aware sidebar navigation
+- Dashboard landing page
+- Employee management UI and employee creation/edit/delete flow
+- Attendance page
+- Time-off page
+- Reports page
+- Settings page
+- Security page for super admin access
+- Supabase integration and edge function-based employee management
+- Shared UI components from shadcn/ui
 
 ---
 
 # Features In Progress
 
-Current priorities:
-
-- Employee Management
-- Dashboard improvements
-- Role-based access
-- Attendance Module
-- Leave Management
+- Stronger role-based permissions enforcement
+- More complete leave and approval workflow
+- Attendance data handling and business logic
+- Reporting enhancements
+- Better data validation and UX around employee profile fields
 
 ---
 
 # Planned Features
 
-- Departments
-- Designations
+- Departments and designations
 - Payroll
 - Recruitment
-- Performance Reviews
-- Reports
-- Notifications
-- Company Settings
-
----
-
-# Future Features
-
-- AI HR Assistant
-- Resume Screening
-- Employee Chat
-- HR Analytics
+- Performance reviews
+- Notifications and announcements
+- Audit trail enhancements
 - Multi-company support
-- Mobile application
-- Public API
+- AI assistant features
 
 ---
 
-# Folder Structure
+# Current Folder Structure
 
-Expected structure:
+The repository currently uses this structure:
 
 app/
+app/(app)/
 components/
-features/
+components/ui/
 hooks/
 lib/
-services/
-types/
 supabase/
-middleware/
 public/
-docs/
 
-If the current structure differs, improve it gradually rather than performing a large rewrite.
+This is the current baseline. New modules should fit into this existing structure rather than introducing a completely different organization.
 
 ---
 
 # Design System
 
 Theme
-
 - Clean
-- Modern
 - Corporate
+- Modern
 - Minimal
 
 UI Library
-
 - shadcn/ui
 
 Icons
-
 - Lucide React
 
 Styling
-
 - Tailwind CSS
 
-Responsive
-
+Responsive Support
 - Mobile
 - Tablet
 - Desktop
 
 ---
 
-# Database Status
+# Database and Backend Status
 
 Supabase is the primary backend.
 
-Expected entities include:
+Current implementation touches:
+- profiles
+- employee management via Supabase Edge Functions
+- authentication
 
-- users
-- employees
-- attendance
-- leave_requests
-- departments
-- designations
-- payroll
-- announcements
-- holidays
-- audit_logs
-
-When modifying the database:
-
-- Preserve existing data where possible.
-- Generate SQL migrations.
-- Update TypeScript types.
-- Respect Row Level Security (RLS).
+Future work should continue to use migrations and typed interfaces where relevant.
 
 ---
 
@@ -210,44 +146,22 @@ When modifying the database:
 
 Authentication uses Supabase Auth.
 
-Expected flow:
+Current flow:
+- User signs in
+- Auth state is loaded in lib/auth-context.tsx
+- User profile is fetched from Supabase
+- The app redirects authenticated users to the protected app shell
 
-Login
-
-↓
-
-Load User
-
-↓
-
-Load Employee Profile
-
-↓
-
-Determine Role
-
-↓
-
-Load Permissions
-
-↓
-
-Redirect to Appropriate Dashboard
-
-Authorization must always be enforced on the server.
+Authorization is currently enforced in the UI layer through role-based navigation and route access patterns.
 
 ---
 
-# Known Technical Debt
+# Known Gaps and Technical Debt
 
-The project originated from Bolt.new.
-
-Possible improvements include:
-
-- Better folder organization
-- Separation of UI and business logic
-- Stronger typing
-- Reusable components
+- Some business logic still needs to be moved out of page components
+- Employee and role permissions can be made more robust
+- More typed domain models and reusable service helpers would improve maintainability
+- The docs should be updated whenever major features are added or changed
 - Better error handling
 - Loading states
 - Performance optimization

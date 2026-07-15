@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, LeaveType } from '@/lib/supabase';
+import { supabase, LeaveType, LeaveBalance, Profile } from '@/lib/supabase';
 import { logAction } from '@/lib/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -33,10 +34,15 @@ export default function SettingsPage() {
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [employees, setEmployees] = useState<Profile[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [employeeBalances, setEmployeeBalances] = useState<LeaveBalance[]>([]);
   const [ltDialog, setLtDialog] = useState(false);
   const [editingLt, setEditingLt] = useState<LeaveType | null>(null);
   const [ltForm, setLtForm] = useState({ name: '', description: '', days_allowed: 0, color: '#0e3a94' });
   const [savingLt, setSavingLt] = useState(false);
+  const [savingBalances, setSavingBalances] = useState(false);
 
   const isHr = profile?.role === 'hr_admin';
 
@@ -60,7 +66,102 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadLeaveTypes();
-  }, []);
+    if (isHr || profile?.role === 'super_admin') {
+      loadEmployees();
+    }
+  }, [profile]);
+
+  async function loadEmployees() {
+    const { data } = await supabase.from('profiles').select('*').eq('is_active', true).order('first_name');
+    setEmployees(data ?? []);
+    if (data && data.length > 0) {
+      setSelectedEmployeeId((prev) => prev || data[0].id);
+    }
+  }
+
+  useEffect(() => {
+    if (selectedEmployeeId) {
+      loadEmployeeBalances(selectedEmployeeId, selectedYear);
+    }
+  }, [selectedEmployeeId, selectedYear]);
+
+  async function loadEmployeeBalances(employeeId: string, year: number) {
+    const { data } = await supabase
+      .from('leave_balances')
+      .select('*, leave_types(*)')
+      .eq('employee_id', employeeId)
+      .eq('year', year);
+
+    setEmployeeBalances(data ?? []);
+  }
+
+  const findBalance = (leaveTypeId: string) => {
+    const existing = employeeBalances.find((bal) => bal.leave_type_id === leaveTypeId);
+    if (existing) return existing;
+    return {
+      id: '',
+      employee_id: selectedEmployeeId,
+      leave_type_id: leaveTypeId,
+      total_days: 0,
+      used_days: 0,
+      pending_days: 0,
+      leave_types: leaveTypes.find((t) => t.id === leaveTypeId),
+    } as LeaveBalance;
+  };
+
+  function updateBalanceField(leaveTypeId: string, field: 'total_days' | 'used_days' | 'pending_days', value: number) {
+    setEmployeeBalances((prev) => {
+      const existing = prev.find((bal) => bal.leave_type_id === leaveTypeId);
+      if (existing) {
+        return prev.map((bal) =>
+          bal.leave_type_id === leaveTypeId ? { ...bal, [field]: value } : bal,
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: '',
+          employee_id: selectedEmployeeId,
+          leave_type_id: leaveTypeId,
+          year: selectedYear,
+          total_days: field === 'total_days' ? value : 0,
+          used_days: field === 'used_days' ? value : 0,
+          pending_days: field === 'pending_days' ? value : 0,
+          leave_types: leaveTypes.find((t) => t.id === leaveTypeId),
+        } as LeaveBalance,
+      ];
+    });
+  }
+
+  async function handleSaveBalances() {
+    if (!selectedEmployeeId) return;
+    setSavingBalances(true);
+    try {
+      for (const bal of employeeBalances) {
+        const payload = {
+          employee_id: selectedEmployeeId,
+          leave_type_id: bal.leave_type_id,
+          year: selectedYear,
+          total_days: bal.total_days,
+          used_days: bal.used_days,
+          pending_days: bal.pending_days,
+        };
+        if (bal.id) {
+          const { error } = await supabase.from('leave_balances').update(payload).eq('id', bal.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('leave_balances').insert(payload);
+          if (error) throw error;
+        }
+      }
+      toast.success('Leave balances updated');
+      await loadEmployeeBalances(selectedEmployeeId, selectedYear);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save leave balances');
+    } finally {
+      setSavingBalances(false);
+    }
+  }
 
   async function handleSaveProfile() {
     if (!profile) return;
@@ -162,6 +263,7 @@ export default function SettingsPage() {
         <TabsList className="bg-white rounded-lg border border-border/50">
           <TabsTrigger value="profile">My Profile</TabsTrigger>
           {isHr && <TabsTrigger value="leave-types">Leave Types</TabsTrigger>}
+          {(isHr || profile?.role === 'super_admin') && <TabsTrigger value="leave-balances">Leave Customization</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile">
@@ -250,6 +352,111 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {(isHr || profile?.role === 'super_admin') && (
+          <TabsContent value="leave-balances">
+            <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-4 flex-col sm:flex-row">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
+                      <Clock className="h-5 w-5 text-[#032364]" />
+                    </div>
+                    <CardTitle className="text-base font-semibold text-[#051536]">Leave Customization</CardTitle>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className="space-y-2">
+                      <Label>Staff Member</Label>
+                      <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+                        <SelectTrigger className="w-[260px] rounded-lg">
+                          <SelectValue placeholder="Select staff" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employees.map((emp) => (
+                            <SelectItem key={emp.id} value={emp.id}>
+                              {emp.first_name} {emp.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Year</Label>
+                      <Select value={String(selectedYear)} onValueChange={(val) => setSelectedYear(Number(val))}>
+                        <SelectTrigger className="w-[120px] rounded-lg">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[selectedYear - 1, selectedYear, selectedYear + 1].map((year) => (
+                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {employees.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No active staff available.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {leaveTypes.map((type) => {
+                      const bal = findBalance(type.id);
+                      return (
+                        <div key={type.id} className="rounded-lg border border-border/50 p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-semibold">{type.name}</p>
+                              <p className="text-xs text-muted-foreground">{type.description ?? 'No description'}</p>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-full bg-[#032364]/10 px-3 py-1 text-xs text-[#032364]">
+                              {type.days_allowed} days/year
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mt-4">
+                            <div className="space-y-2">
+                              <Label>Total Days</Label>
+                              <Input
+                                type="number"
+                                value={bal.total_days}
+                                onChange={(e) => updateBalanceField(type.id, 'total_days', Number(e.target.value))}
+                                className="rounded-lg"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Used Days</Label>
+                              <Input
+                                type="number"
+                                value={bal.used_days}
+                                onChange={(e) => updateBalanceField(type.id, 'used_days', Number(e.target.value))}
+                                className="rounded-lg"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Pending Days</Label>
+                              <Input
+                                type="number"
+                                value={bal.pending_days}
+                                onChange={(e) => updateBalanceField(type.id, 'pending_days', Number(e.target.value))}
+                                className="rounded-lg"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveBalances} disabled={savingBalances || !selectedEmployeeId} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90">
+                        {savingBalances ? 'Saving...' : 'Save Balances'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

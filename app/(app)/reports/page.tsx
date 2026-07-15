@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase, Profile, AttendanceRecord, LeaveRequest } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, CalendarCheck, Clock3, TrendingUp, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function ReportsPage() {
@@ -13,9 +15,126 @@ export default function ReportsPage() {
   const [attendanceStats, setAttendanceStats] = useState<Record<string, { present: number; late: number; absent: number }>>({});
   const [leaveStats, setLeaveStats] = useState({ approved: 0, pending: 0, rejected: 0 });
   const [monthlyData, setMonthlyData] = useState<{ month: string; present: number; late: number }[]>([]);
+  const [activeReport, setActiveReport] = useState<'daily' | 'weekly' | 'monthly' | 'leave'>('daily');
+  const [exporting, setExporting] = useState(false);
 
   const isHr = profile?.role === 'hr_admin';
   const isManager = profile?.role === 'manager';
+
+  const formatCsvValue = (value: unknown) => {
+    const str = value === null || value === undefined ? '' : String(value);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
+  const buildCsv = (headers: string[], rows: Array<string[]>) => {
+    return [headers.map(formatCsvValue).join(','), ...rows.map((row) => row.map(formatCsvValue).join(','))].join('\r\n');
+  };
+
+  const buildXls = (headers: string[], rows: Array<string[]>) => {
+    const headerRow = headers.map((h) => `<th>${h}</th>`).join('');
+    const bodyRows = rows
+      .map((row) => `<tr>${row.map((cell) => `<td>${String(cell).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`).join('')}</tr>`)
+      .join('');
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table border="1"><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+  };
+
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const attendanceDateRange = (range: 'daily' | 'weekly' | 'monthly') => {
+    const today = new Date();
+    const end = today.toISOString().split('T')[0];
+    let start: string;
+    if (range === 'daily') {
+      start = end;
+    } else if (range === 'weekly') {
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 6);
+      start = startDate.toISOString().split('T')[0];
+    } else {
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      start = startDate.toISOString().split('T')[0];
+    }
+    return { start, end };
+  };
+
+  const exportAttendanceReport = async (range: 'daily' | 'weekly' | 'monthly', format: 'csv' | 'xls') => {
+    if (!profile) return;
+    setExporting(true);
+    try {
+      const teamIds = employees.map((emp) => emp.id);
+      const { start, end } = attendanceDateRange(range);
+      const { data: records, error } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .in('employee_id', teamIds)
+        .gte('date', start)
+        .lte('date', end)
+        .order('date', { ascending: true });
+      if (error) throw error;
+
+      const employeeMap = Object.fromEntries(employees.map((emp) => [emp.id, `${emp.first_name} ${emp.last_name}`]));
+      const rows = (records ?? []).map((rec) => [
+        employeeMap[rec.employee_id] ?? rec.employee_id,
+        rec.date,
+        rec.check_in ?? '',
+        rec.check_out ?? '',
+        rec.status,
+        rec.check_in && rec.check_out ? String(Math.round((new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / 1000 / 60)) : '',
+      ]);
+      const headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Status', 'Duration (minutes)'];
+      const content = format === 'csv' ? buildCsv(headers, rows) : buildXls(headers, rows);
+      const ext = format === 'csv' ? 'csv' : 'xls';
+      downloadFile(content, `attendance-${range}-report.${ext}`, format === 'csv' ? 'text/csv' : 'application/vnd.ms-excel');
+    } catch (err) {
+      console.error('Export attendance report failed', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportLeaveReport = async (format: 'csv' | 'xls') => {
+    if (!profile) return;
+    setExporting(true);
+    try {
+      const teamIds = employees.map((emp) => emp.id);
+      const { data: leaves, error } = await supabase
+        .from('leave_requests')
+        .select('*, leave_types(*)')
+        .in('employee_id', teamIds)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+
+      const employeeMap = Object.fromEntries(employees.map((emp) => [emp.id, `${emp.first_name} ${emp.last_name}`]));
+      const rows = (leaves ?? []).map((req) => [
+        employeeMap[req.employee_id] ?? req.employee_id,
+        req.leave_types?.name ?? '',
+        req.start_date,
+        req.end_date,
+        String(req.days_requested),
+        req.status,
+        req.reason ?? '',
+        req.approved_at ?? '',
+      ]);
+      const headers = ['Employee', 'Leave Type', 'Start Date', 'End Date', 'Days Requested', 'Status', 'Reason', 'Approved At'];
+      const content = format === 'csv' ? buildCsv(headers, rows) : buildXls(headers, rows);
+      const ext = format === 'csv' ? 'csv' : 'xls';
+      downloadFile(content, `leave-report.${ext}`, format === 'csv' ? 'text/csv' : 'application/vnd.ms-excel');
+    } catch (err) {
+      console.error('Export leave report failed', err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     async function loadReport() {
@@ -225,6 +344,61 @@ export default function ReportsPage() {
               <p className="text-xs text-muted-foreground">Rejected</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-[#051536]">Export Reports</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeReport} onValueChange={(value) => setActiveReport(value as 'daily' | 'weekly' | 'monthly' | 'leave')}>
+            <TabsList className="bg-white rounded-lg border border-border/50">
+              <TabsTrigger value="daily">Daily</TabsTrigger>
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="leave">Leave</TabsTrigger>
+            </TabsList>
+            <TabsContent value="daily" className="mt-4 p-0">
+              <p className="text-sm text-muted-foreground mb-4">Export daily attendance records for your team.</p>
+            </TabsContent>
+            <TabsContent value="weekly" className="mt-4 p-0">
+              <p className="text-sm text-muted-foreground mb-4">Export attendance records for the last 7 days.</p>
+            </TabsContent>
+            <TabsContent value="monthly" className="mt-4 p-0">
+              <p className="text-sm text-muted-foreground mb-4">Export attendance records for the current month.</p>
+            </TabsContent>
+            <TabsContent value="leave" className="mt-4 p-0">
+              <p className="text-sm text-muted-foreground mb-4">Export leave requests for your team.</p>
+            </TabsContent>
+          </Tabs>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (activeReport === 'leave') exportLeaveReport('csv');
+                else exportAttendanceReport(activeReport, 'csv');
+              }}
+              disabled={exporting || employees.length === 0}
+            >
+              Export {activeReport === 'leave' ? 'Leave' : `${activeReport.charAt(0).toUpperCase() + activeReport.slice(1)} Attendance`} CSV
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (activeReport === 'leave') exportLeaveReport('xls');
+                else exportAttendanceReport(activeReport, 'xls');
+              }}
+              disabled={exporting || employees.length === 0}
+            >
+              Export {activeReport === 'leave' ? 'Leave' : `${activeReport.charAt(0).toUpperCase() + activeReport.slice(1)} Attendance`} XLS
+            </Button>
+          </div>
+          {employees.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">No team members found for export.</p>
+          ) : null}
+          {exporting ? <p className="mt-3 text-sm text-muted-foreground">Preparing export…</p> : null}
         </CardContent>
       </Card>
     </div>

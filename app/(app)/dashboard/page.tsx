@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
 import { supabase, AttendanceRecord, LeaveRequest, LeaveBalance, Profile } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +23,21 @@ export default function DashboardPage() {
   const isManager = profile?.role === 'manager';
   const isSuperAdmin = profile?.role === 'super_admin';
 
+  async function reconcileAttendanceRecord(record: AttendanceRecord | null) {
+    if (!record || !record.check_in || record.check_out) return record;
+    if (!shouldAutoCheckout(record.check_in, record.check_out)) return record;
+
+    const checkoutAt = getAutoCheckoutTime(record.check_in);
+    const { data } = await supabase
+      .from('attendance_records')
+      .update({ check_out: checkoutAt, status: 'absent' })
+      .eq('id', record.id)
+      .select('*')
+      .maybeSingle();
+
+    return data ?? record;
+  }
+
   async function loadData() {
     if (!profile) return;
     const today = new Date().toISOString().split('T')[0];
@@ -32,16 +49,21 @@ export default function DashboardPage() {
       .eq('employee_id', profile.id)
       .eq('date', today)
       .maybeSingle();
-    setTodayRecord(att);
+    setTodayRecord(await reconcileAttendanceRecord(att));
 
     // My leave requests
-    const { data: leaves } = await supabase
+    const { data: leaves, error: leavesError } = await supabase
       .from('leave_requests')
-      .select('*, leave_types(*), profiles(*)')
+      .select('id, employee_id, leave_type_id, start_date, end_date, days_requested, reason, status, approved_by, approved_at, rejection_reason, created_at, leave_types(name, color)')
       .eq('employee_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(5);
-    setMyLeaves(leaves ?? []);
+    if (leavesError) {
+      console.error('Failed to load dashboard leave requests', leavesError);
+      setMyLeaves([]);
+    } else {
+      setMyLeaves(leaves ?? []);
+    }
 
     // My leave balances
     const { data: bals } = await supabase
@@ -82,8 +104,6 @@ export default function DashboardPage() {
     setClockLoading(true);
     const now = new Date().toISOString();
     const today = new Date().toISOString().split('T')[0];
-    const hour = new Date().getHours();
-    const status = hour >= 9 ? 'late' : 'present';
 
     const { data } = await supabase
       .from('attendance_records')
@@ -91,7 +111,7 @@ export default function DashboardPage() {
         employee_id: profile.id,
         date: today,
         check_in: now,
-        status,
+        status: 'present',
       })
       .select('*')
       .maybeSingle();
@@ -100,12 +120,13 @@ export default function DashboardPage() {
   }
 
   async function handleCheckOut() {
-    if (!profile || !todayRecord) return;
+    if (!profile || !todayRecord || !todayRecord.check_in) return;
     setClockLoading(true);
     const now = new Date().toISOString();
+    const status = attendanceStatusFromDuration(todayRecord.check_in, now);
     const { data } = await supabase
       .from('attendance_records')
-      .update({ check_out: now })
+      .update({ check_out: now, status })
       .eq('id', todayRecord.id)
       .select('*')
       .maybeSingle();
@@ -174,10 +195,58 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       {(isHr || isSuperAdmin) && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Users} label="Total Employees" value={stats.totalEmployees} color="#032364" />
-          <StatCard icon={CalendarCheck} label="Present Today" value={stats.presentToday} color="#059669" />
-          <StatCard icon={Clock3} label="Pending Leaves" value={stats.pendingLeaves} color="#d97706" />
-          <StatCard icon={CalendarOff} label="On Leave Today" value={stats.onLeave} color="#7c3aed" />
+          <Link href="/employees" className="block">
+            <Card className="rounded-xl border-0 bg-white vcgl-shadow hover:shadow-lg transition">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Employees</p>
+                    <p className="text-3xl font-semibold text-[#051536]">{stats.totalEmployees}</p>
+                  </div>
+                  <Users className="h-6 w-6 text-[#032364]" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/attendance" className="block">
+            <Card className="rounded-xl border-0 bg-white vcgl-shadow hover:shadow-lg transition">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Present Today</p>
+                    <p className="text-3xl font-semibold text-[#051536]">{stats.presentToday}</p>
+                  </div>
+                  <CalendarCheck className="h-6 w-6 text-[#059669]" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/time-off" className="block">
+            <Card className="rounded-xl border-0 bg-white vcgl-shadow hover:shadow-lg transition">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Leaves</p>
+                    <p className="text-3xl font-semibold text-[#051536]">{stats.pendingLeaves}</p>
+                  </div>
+                  <Clock3 className="h-6 w-6 text-[#d97706]" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/time-off" className="block">
+            <Card className="rounded-xl border-0 bg-white vcgl-shadow hover:shadow-lg transition">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">On Leave Today</p>
+                    <p className="text-3xl font-semibold text-[#051536]">{stats.onLeave}</p>
+                  </div>
+                  <CalendarOff className="h-6 w-6 text-[#7c3aed]" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       )}
 

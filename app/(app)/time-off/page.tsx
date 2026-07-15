@@ -50,33 +50,59 @@ export default function TimeOffPage() {
     if (!profile) return;
 
     // Leave types
-    const { data: types } = await supabase.from('leave_types').select('*').eq('is_active', true);
-    setLeaveTypes(types ?? []);
+    const { data: types, error: typesError } = await supabase.from('leave_types').select('*').eq('is_active', true);
+    if (typesError) {
+      console.error('Failed to load leave types', typesError);
+      toast.error('Unable to load leave types');
+      setLeaveTypes([]);
+    } else {
+      setLeaveTypes(types ?? []);
+    }
 
     // My requests
-    const { data: reqs } = await supabase
+    const { data: reqs, error: reqsError } = await supabase
       .from('leave_requests')
-      .select('*, leave_types(*), profiles(*)')
+      .select('id, employee_id, leave_type_id, start_date, end_date, days_requested, reason, status, approved_by, approved_at, rejection_reason, created_at, leave_types(name, color)')
       .eq('employee_id', profile.id)
       .order('created_at', { ascending: false });
-    setMyRequests(reqs ?? []);
+
+    if (reqsError) {
+      console.error('Failed to load my leave requests', reqsError);
+      toast.error('Unable to load your leave requests');
+      setMyRequests([]);
+    } else {
+      setMyRequests(reqs ?? []);
+    }
 
     // My balances
-    const { data: bals } = await supabase
+    const { data: bals, error: balsError } = await supabase
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', profile.id)
       .eq('year', new Date().getFullYear());
-    setBalances(bals ?? []);
+    if (balsError) {
+      console.error('Failed to load leave balances', balsError);
+      toast.error('Unable to load your leave balances');
+      setBalances([]);
+    } else {
+      setBalances(bals ?? []);
+    }
 
     // Pending approvals (HR)
     if (isHr) {
-      const { data: pending } = await supabase
+      const { data: pending, error: pendingError } = await supabase
         .from('leave_requests')
-        .select('*, leave_types(*), profiles(*)')
+        .select('*, leave_types(*), profiles!employee_id(id, first_name, last_name)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-      setPendingApprovals(pending ?? []);
+
+      if (pendingError) {
+        console.error('Failed to load pending leave approvals', pendingError);
+        toast.error('Unable to load pending leave requests');
+        setPendingApprovals([]);
+      } else {
+        setPendingApprovals(pending ?? []);
+      }
     }
   }
 
@@ -103,7 +129,7 @@ export default function TimeOffPage() {
     try {
       const days = calculateDays(form.start_date, form.end_date);
 
-      const { error } = await supabase.from('leave_requests').insert({
+      const { data: insertedRequest, error: insertError } = await supabase.from('leave_requests').insert({
         employee_id: profile.id,
         leave_type_id: form.leave_type_id,
         start_date: form.start_date,
@@ -111,9 +137,9 @@ export default function TimeOffPage() {
         days_requested: days,
         reason: form.reason || null,
         status: 'pending',
-      });
+      }).select('*, leave_types(*)').maybeSingle();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
       // Update pending days in balance
       const bal = balances.find((b) => b.leave_type_id === form.leave_type_id);
@@ -127,7 +153,10 @@ export default function TimeOffPage() {
       toast.success('Leave request submitted');
       setDialogOpen(false);
       setForm({ leave_type_id: '', start_date: '', end_date: '', reason: '' });
-      loadData();
+      if (insertedRequest) {
+        setMyRequests((prev) => [insertedRequest, ...prev]);
+      }
+      await loadData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to submit request');
     } finally {
@@ -168,7 +197,7 @@ export default function TimeOffPage() {
 
       await logAction(profile.id, 'approve', 'leave_request', req.id);
       toast.success('Leave request approved');
-      loadData();
+      await loadData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve');
     }
@@ -208,7 +237,7 @@ export default function TimeOffPage() {
 
       await logAction(profile.id, 'reject', 'leave_request', req.id, { reason });
       toast.success('Leave request rejected');
-      loadData();
+      await loadData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to reject');
     }

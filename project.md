@@ -4,24 +4,24 @@
 
 ## Vision
 
-Build a modern Human Resource Management platform for organizations of all sizes.
+Build a modern human resource management platform that helps organizations manage employees, attendance, time-off, and core HR workflows with a clean, secure, and scalable experience.
 
-The system should automate HR operations while remaining simple, secure, scalable and AI-ready.
+The system should remain simple to use while being ready for future growth, additional modules, and integrations.
 
 ---
 
-# Project Goals
+# Product Goals
 
-The application manages the complete employee lifecycle.
+The current product scope focuses on the core employee lifecycle and HR administration experience.
 
-Major objectives:
+## Core Objectives
 
-- Employee Management
-- Attendance
-- Leave Management
-- Reports
-- Company Communication
-- HR Analytics
+- Employee management
+- Attendance tracking
+- Time-off / leave requests
+- Reports and HR administration views
+- Secure role-based access
+- A modern internal dashboard experience
 
 ---
 
@@ -29,229 +29,146 @@ Major objectives:
 
 ## Employee
 
-Features
-
+Features include:
 - Login
-- Dashboard
-- Update Profile
-- Attendance
-- Leave Requests
-- Leave Balance
-- Announcements
-- Company Policies
-
----
+- Dashboard access
+- Attendance view
+- Time-off requests
+- Profile-related access
+- Basic settings access
 
 ## Manager
 
-Everything an Employee can do plus:
-
-- Team Dashboard
-- Team Attendance
-- Leave Approval
-- Team Reports
-
-
----
+Includes employee capabilities plus:
+- Manager-level dashboard access
+- Team-related views
+- Reporting access
 
 ## HR Administrator
 
-Features
-
-- Employee Management
-- Departments
-- Designations
-- Leave Management
-- Recruitment
-- Holidays
-- Reports
-- HR Analytics
-
----
+Includes manager capabilities plus:
+- Employee administration
+- HR-focused dashboard views
+- User management workflows
+- Reports and policy-related access
 
 ## Super Admin
 
-Full system access.
-
-Responsible for:
-- all hr features
-- Roles
-- Permissions
-- Integrations
-- Security
-- Audit Logs
-- System Settings
+Full system access for administration and sensitive controls.
 
 ---
 
-# Core Modules
+# Current Modules
 
-Authentication
+The application currently includes:
 
-Dashboard
-
-Employees
-
-Attendance
-
-Leave
-
-Departments
-
-Designations
-
-Announcements
-
-Documents
-
-Reports
-
-Notifications
-
-Settings
-
-Audit Logs
+- Authentication
+- Dashboard
+- Employees
+- Attendance
+- Time Off
+- Reports
+- Settings
+- Security
 
 ---
 
 # Current Status
 
+## Implemented
 
+- Authentication and protected routing
+- Dashboard shell and app layout
+- Employee management UI
+- Attendance page
+- Time-off page
+- Reports page
+- Settings page
+- Security page
+- Supabase-backed employee management flow
 
+## In Progress
 
-In Progress
+- Stronger role-based access enforcement
+- More complete leave workflow behavior
+- Reporting enhancement
+- Better employee data validation and UX
 
-- Dashboard
-- Employee Module
-- Authentication
-- Base Layout
-- Routing
-- Initial UI
-- Supabase Connection
+## Planned
 
-Planned
-
-- Attendance
-- Leave
-- Departments
-- Reports
-
-Future
-
+- Departments and designations
 - Payroll
 - Recruitment
-- AI Assistant
-- Multi-company Support
+- Performance reviews
+- Notifications and announcements
+- Audit and compliance improvements
+- AI assistant features
+- Multi-company support
 
 ---
 
 # Business Rules
 
-Attendance
+## Attendance
 
-- One Check-In per day.
-- Check-Out requires Check-In.
-- Attendance timestamps stored in UTC.
+- Attendance is tracked as part of the HR workflow
+- The system should support one check-in experience per day
+- Check-out should remain dependent on prior check-in
 
-Leave
+## Leave / Time Off
 
-- Leave balance must be validated.
-- Approval workflow follows company policy.
+- Leave requests should be validated before processing
+- Approval flow should follow the organization’s policy
 
-Employees
+## Employees
 
-- Email addresses are unique.
-- Employee IDs are unique.
-- Historical records should be preserved.
-
----
-
-# Future AI Features
-
-- AI HR Assistant
-- Resume Screening
-- Employee Chatbot
-- HR Analytics Assistant
-- Policy Assistant
+- Email addresses should be unique
+- Employee IDs should be unique
+- Historical records should be preserved
 
 ---
 
-# Project Folder Structure
+# Project Structure
 
-app/
+The app currently follows this structure:
 
-components/
-
-features/
-
-hooks/
-
-lib/
-
-services/
-
-types/
-
-supabase/
-
-middleware/
-
-docs/
-
----
-
-# Future Integrations
-
-- Microsoft 365
-- Google Workspace
-- Slack
-- Teams
-- Paystack
-- Flutterwave
-- Resend
-- Twilio
+- app/
+- app/(app)/
+- components/
+- components/ui/
+- hooks/
+- lib/
+- supabase/
+- public/
 
 ---
 
 # Development Priorities
 
-Priority 1
+## Priority 1
 
-Authentication
+- Authentication reliability
+- Employee management
+- Dashboard usability
+- Attendance workflow
 
-Employees
+## Priority 2
 
-Dashboard
+- Leave and time-off improvements
+- Reporting improvements
+- Settings and security refinements
 
-Attendance
+## Priority 3
 
-Priority 2
+- Departments and designations
+- Payroll
+- Recruitment
 
-Leave
+## Priority 4
 
-Departments
-
-Designations
-
-Reports
-
-Priority 3
-
-Payroll
-
-Recruitment
-
-Performance
-
-Priority 4
-
-AI Features
-
-Mobile App
-
-Public API
-
-Multi-company
+- AI features
+- Multi-company support
+- Public API and broader integrations
 
 ---
 
@@ -263,8 +180,5 @@ The system should be:
 - Fast
 - Responsive
 - Accessible
-- Production-ready
 - Easy to maintain
 - Easy to extend
-
-Every new feature should fit naturally into the existing architecture.
