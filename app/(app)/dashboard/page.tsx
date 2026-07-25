@@ -3,12 +3,16 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
+import { formatDuration, attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
 import { supabase, AttendanceRecord, LeaveRequest, LeaveBalance, Profile } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CalendarCheck, CalendarOff, Users, LogIn, LogOut, TrendingUp, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Clock, CalendarCheck, CalendarOff, Users, LogIn, LogOut, TrendingUp, CheckCircle2, XCircle, Clock3, Cake, MapPin } from 'lucide-react';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -17,11 +21,12 @@ export default function DashboardPage() {
   const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [stats, setStats] = useState({ totalEmployees: 0, presentToday: 0, pendingLeaves: 0, onLeave: 0 });
   const [teamMembers, setTeamMembers] = useState<Profile[]>([]);
+  const [birthdays, setBirthdays] = useState<Profile[]>([]);
   const [clockLoading, setClockLoading] = useState(false);
+  const [liveDuration, setLiveDuration] = useState('00:00:00');
 
-  const isHr = profile?.role === 'hr_admin';
+  const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
   const isManager = profile?.role === 'manager';
-  const isSuperAdmin = profile?.role === 'super_admin';
 
   async function reconcileAttendanceRecord(record: AttendanceRecord | null) {
     if (!record || !record.check_in || record.check_out) return record;
@@ -37,6 +42,22 @@ export default function DashboardPage() {
 
     return data ?? record;
   }
+
+  const getCurrentLocation = async (): Promise<{ lat: number; lng: number } | null> => {
+    if (!navigator.geolocation) return null;
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({ lat: position.coords.latitude, lng: position.coords.longitude });
+        },
+        () => {
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      );
+    });
+  };
 
   async function loadData() {
     if (!profile) return;
@@ -62,7 +83,7 @@ export default function DashboardPage() {
       console.error('Failed to load dashboard leave requests', leavesError);
       setMyLeaves([]);
     } else {
-      setMyLeaves(leaves ?? []);
+      setMyLeaves((leaves ?? []) as unknown as LeaveRequest[]);
     }
 
     // My leave balances
@@ -73,7 +94,7 @@ export default function DashboardPage() {
       .eq('year', new Date().getFullYear());
     setBalances(bals ?? []);
 
-    if (isHr || isSuperAdmin) {
+    if (isHr) {
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true);
       const { count: present } = await supabase.from('attendance_records').select('*', { count: 'exact', head: true }).eq('date', today).not('check_in', 'is', null);
       const { count: pending } = await supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
@@ -84,6 +105,26 @@ export default function DashboardPage() {
         onLeave: 0,
       });
     }
+
+    const month = new Date().getMonth() + 1;
+    const { data: birthdayRows } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('is_active', true)
+      .not('date_of_birth', 'is', null);
+    setBirthdays(
+      (birthdayRows ?? [])
+        .filter((emp) => {
+          const dob = emp.date_of_birth;
+          if (!dob) return false;
+          const birthMonth = new Date(dob).getMonth() + 1;
+          return birthMonth === month;
+        })
+        .sort((a, b) => {
+          if (!a.date_of_birth || !b.date_of_birth) return 0;
+          return new Date(a.date_of_birth).getDate() - new Date(b.date_of_birth).getDate();
+        }),
+    );
 
     if (isManager) {
       const { data: team } = await supabase
@@ -99,9 +140,41 @@ export default function DashboardPage() {
     loadData();
   }, [profile]);
 
+  useEffect(() => {
+    if (!todayRecord?.check_in) {
+      setLiveDuration('00:00:00');
+      return;
+    }
+
+    const updateDuration = () => {
+      if (!todayRecord.check_in) return;
+      const startTime = new Date(todayRecord.check_in).getTime();
+      const endTime = todayRecord.check_out ? new Date(todayRecord.check_out).getTime() : Date.now();
+      setLiveDuration(formatDuration(endTime - startTime));
+    };
+
+    updateDuration();
+
+    if (todayRecord.check_out) return;
+
+    const timer = window.setInterval(updateDuration, 1000);
+    return () => window.clearInterval(timer);
+  }, [todayRecord]);
+
   async function handleCheckIn() {
     if (!profile) return;
+    if (todayRecord?.check_in && !todayRecord?.check_out) {
+      toast.error('You have already checked in today. Please check out first.');
+      return;
+    }
     setClockLoading(true);
+    const location = await getCurrentLocation();
+    if (!location) {
+      window.alert('Unable to capture your location. Please allow location access and try again.');
+      setClockLoading(false);
+      return;
+    }
+
     const now = new Date().toISOString();
     const today = new Date().toISOString().split('T')[0];
 
@@ -111,6 +184,8 @@ export default function DashboardPage() {
         employee_id: profile.id,
         date: today,
         check_in: now,
+        check_in_lat: location.lat,
+        check_in_lng: location.lng,
         status: 'present',
       })
       .select('*')
@@ -122,11 +197,23 @@ export default function DashboardPage() {
   async function handleCheckOut() {
     if (!profile || !todayRecord || !todayRecord.check_in) return;
     setClockLoading(true);
+    const location = await getCurrentLocation();
+    if (!location) {
+      window.alert('Unable to capture your location. Please allow location access and try again.');
+      setClockLoading(false);
+      return;
+    }
+
     const now = new Date().toISOString();
     const status = attendanceStatusFromDuration(todayRecord.check_in, now);
     const { data } = await supabase
       .from('attendance_records')
-      .update({ check_out: now, status })
+      .update({
+        check_out: now,
+        check_out_lat: location.lat,
+        check_out_lng: location.lng,
+        status,
+      })
       .eq('id', todayRecord.id)
       .select('*')
       .maybeSingle();
@@ -141,13 +228,12 @@ export default function DashboardPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#051536]">Overview</h1>
+        <h1 className="text-xl font-bold text-[#051536]">Overview</h1>
         <p className="text-sm text-muted-foreground mt-1">Welcome back, {fullName}</p>
       </div>
 
       {/* Clock In/Out Card */}
-      {!isSuperAdmin && (
-        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardContent className="p-6">
             <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
               <div className="flex items-center gap-4">
@@ -155,7 +241,7 @@ export default function DashboardPage() {
                   <Clock className="h-7 w-7 text-[#032364]" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-[#051536]">Attendance</h3>
+                  <h3 className="text-base font-semibold text-[#051536]">Attendance</h3>
                   <p className="text-sm text-muted-foreground">
                     {todayRecord?.check_in
                       ? `Checked in at ${new Date(todayRecord.check_in).toLocaleTimeString()}`
@@ -166,8 +252,28 @@ export default function DashboardPage() {
                       ? ' • Still working'
                       : ''}
                   </p>
+                  {todayRecord?.check_in_lat && todayRecord?.check_in_lng ? (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      Check-in: {todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng.toFixed(4)}
+                    </p>
+                  ) : null}
+                  {todayRecord?.check_out_lat && todayRecord?.check_out_lng ? (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      Check-out: {todayRecord.check_out_lat.toFixed(4)}, {todayRecord.check_out_lng.toFixed(4)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
+              {todayRecord?.check_in && (
+                <div className="flex flex-col items-center gap-1 sm:items-end">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {todayRecord?.check_out ? 'Total Time Worked' : 'Time Worked Today'}
+                  </p>
+                  <p className="text-5xl font-mono font-bold text-[#032364] tabular-nums">{liveDuration}</p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <Button
                   onClick={handleCheckIn}
@@ -190,10 +296,9 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      )}
 
       {/* Stats Grid */}
-      {(isHr || isSuperAdmin) && (
+      {isHr && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/employees" className="block">
             <Card className="rounded-xl border-0 bg-white vcgl-shadow hover:shadow-lg transition">
@@ -201,7 +306,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Employees</p>
-                    <p className="text-3xl font-semibold text-[#051536]">{stats.totalEmployees}</p>
+                    <p className="text-2xl font-semibold text-[#051536]">{stats.totalEmployees}</p>
                   </div>
                   <Users className="h-6 w-6 text-[#032364]" />
                 </div>
@@ -214,7 +319,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Present Today</p>
-                    <p className="text-3xl font-semibold text-[#051536]">{stats.presentToday}</p>
+                    <p className="text-2xl font-semibold text-[#051536]">{stats.presentToday}</p>
                   </div>
                   <CalendarCheck className="h-6 w-6 text-[#059669]" />
                 </div>
@@ -227,7 +332,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Pending Leaves</p>
-                    <p className="text-3xl font-semibold text-[#051536]">{stats.pendingLeaves}</p>
+                    <p className="text-2xl font-semibold text-[#051536]">{stats.pendingLeaves}</p>
                   </div>
                   <Clock3 className="h-6 w-6 text-[#d97706]" />
                 </div>
@@ -240,7 +345,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">On Leave Today</p>
-                    <p className="text-3xl font-semibold text-[#051536]">{stats.onLeave}</p>
+                    <p className="text-2xl font-semibold text-[#051536]">{stats.onLeave}</p>
                   </div>
                   <CalendarOff className="h-6 w-6 text-[#7c3aed]" />
                 </div>
@@ -251,10 +356,48 @@ export default function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Birthday of the Month Card */}
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-[#051536]">Birthday of the Month</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {birthdays.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No employee birthdays this month.</p>
+            ) : (
+              <div className="space-y-3">
+                {birthdays.map((employee) => {
+                  const date = employee.date_of_birth ? new Date(employee.date_of_birth) : null;
+                  return (
+                    <div key={employee.id} className="flex items-center gap-3 rounded-2xl border border-border/50 p-3">
+                      <div className="relative h-12 w-12 overflow-hidden rounded-full bg-slate-100">
+                        {employee.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={employee.avatar_url} alt={`${employee.first_name} ${employee.last_name}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-[#032364] text-sm font-semibold text-white">
+                            {employee.first_name[0]}{employee.last_name[0]}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-[#051536]">{employee.first_name} {employee.last_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {employee.job_title ?? 'Employee'} • {date ? date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : 'Unknown date'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* My Leave Balances */}
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-[#051536]">My Leave Balances</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">My Leave Balances</CardTitle>
           </CardHeader>
           <CardContent>
             {balances.length === 0 ? (
@@ -287,7 +430,7 @@ export default function DashboardPage() {
         {/* Recent Leave Requests */}
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-[#051536]">Recent Leave Requests</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Recent Leave Requests</CardTitle>
           </CardHeader>
           <CardContent>
             {myLeaves.length === 0 ? (
@@ -323,7 +466,7 @@ export default function DashboardPage() {
       {isManager && teamMembers.length > 0 && (
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-[#051536]">My Team</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">My Team</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -334,7 +477,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{member.first_name} {member.last_name}</p>
-                    <p className="text-xs text-muted-foreground">{member.job_title ?? member.department ?? 'Employee'}</p>
+                    <p className="text-xs text-muted-foreground">{member.job_title ?? 'Employee'}</p>
                   </div>
                 </div>
               ))}

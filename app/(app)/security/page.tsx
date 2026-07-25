@@ -52,7 +52,7 @@ export default function SecurityPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#051536]">Security & Audit</h1>
+        <h1 className="text-xl font-bold text-[#051536]">Security & Audit</h1>
         <p className="text-sm text-muted-foreground mt-1">System audit log — monitor all actions across the platform</p>
       </div>
 
@@ -63,7 +63,7 @@ export default function SecurityPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Log Entries</p>
-                <p className="text-2xl font-bold text-[#051536] mt-1">{logs.length}</p>
+                <p className="text-xl font-bold text-[#051536] mt-1">{logs.length}</p>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#032364]/10">
                 <ShieldCheck className="h-6 w-6 text-[#032364]" />
@@ -74,13 +74,13 @@ export default function SecurityPage() {
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground">Create Actions</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{logs.filter((l) => l.action === 'create').length}</p>
+                <p className="text-xl font-bold text-green-600 mt-1">{logs.filter((l) => l.action === 'create').length}</p>
           </CardContent>
         </Card>
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardContent className="p-5">
             <p className="text-sm text-muted-foreground">Delete Actions</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">{logs.filter((l) => l.action === 'delete').length}</p>
+                <p className="text-xl font-bold text-red-600 mt-1">{logs.filter((l) => l.action === 'delete').length}</p>
           </CardContent>
         </Card>
       </div>
@@ -99,7 +99,7 @@ export default function SecurityPage() {
       {/* Audit Log Table */}
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#051536]">Audit Trail</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Audit Trail</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

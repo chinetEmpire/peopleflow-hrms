@@ -35,15 +35,14 @@ interface NavItem {
 
 const menuItems: NavItem[] = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
-  { label: 'Attendance', href: '/attendance', icon: Calendar, roles: ['employee', 'manager', 'hr_admin'] },
-  { label: 'Employees', href: '/employees', icon: Users, roles: ['hr_admin'] },
-  { label: 'Departments', href: '/departments', icon: Building2, roles: ['hr_admin', 'super_admin'] },
-  { label: 'Time Off', href: '/time-off', icon: Clock, roles: ['employee', 'manager', 'hr_admin'] },
-  { label: 'Reports', href: '/reports', icon: FileBarChart, roles: ['manager', 'hr_admin'] },
+  { label: 'Attendance', href: '/attendance', icon: Calendar, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
+  { label: 'Employees', href: '/employees', icon: Users, roles: ['hr_admin', 'super_admin'] },
+  { label: 'Time Off', href: '/time-off', icon: Clock, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
+  { label: 'Reports', href: '/reports', icon: FileBarChart, roles: ['manager', 'hr_admin', 'super_admin'] },
 ];
 
 const generalItems: NavItem[] = [
-  { label: 'Settings', href: '/settings', icon: Settings, roles: ['employee', 'manager', 'hr_admin'] },
+  { label: 'Settings', href: '/settings', icon: Settings, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
   { label: 'Security', href: '/security', icon: ShieldCheck, roles: ['super_admin'] },
 ];
 
@@ -79,7 +78,7 @@ function SidebarContent({
       <header className="flex min-h-[50px] items-center justify-center px-5">
         <div className="flex items-center gap-2">
           <Building2 className="h-6 w-6 text-white" />
-          <h1 className="text-2xl font-bold text-white">VCGL ONE</h1>
+          <h1 className="text-xl font-bold text-white">VCGL ONE</h1>
         </div>
       </header>
 

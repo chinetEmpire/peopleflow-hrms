@@ -6,13 +6,11 @@ export async function callManageEmployee(action: string, data: Record<string, un
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Not authenticated');
 
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-employee`;
-  const res = await fetch(url, {
+  const res = await fetch('/api/employees', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     },
     body: JSON.stringify({ action, ...data }),
   });

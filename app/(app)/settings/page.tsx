@@ -29,7 +29,6 @@ export default function SettingsPage() {
     last_name: '',
     nick_name: '',
     phone: '',
-    department: '',
     job_title: '',
   });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -44,7 +43,7 @@ export default function SettingsPage() {
   const [savingLt, setSavingLt] = useState(false);
   const [savingBalances, setSavingBalances] = useState(false);
 
-  const isHr = profile?.role === 'hr_admin';
+  const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
   useEffect(() => {
     if (profile) {
@@ -53,7 +52,6 @@ export default function SettingsPage() {
         last_name: profile.last_name,
         nick_name: profile.nick_name ?? '',
         phone: profile.phone ?? '',
-        department: profile.department ?? '',
         job_title: profile.job_title ?? '',
       });
     }
@@ -66,7 +64,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     loadLeaveTypes();
-    if (isHr || profile?.role === 'super_admin') {
+    if (isHr) {
       loadEmployees();
     }
   }, [profile]);
@@ -174,7 +172,6 @@ export default function SettingsPage() {
           last_name: profileForm.last_name,
           nick_name: profileForm.nick_name || null,
           phone: profileForm.phone || null,
-          department: profileForm.department || null,
           job_title: profileForm.job_title || null,
           updated_at: new Date().toISOString(),
         })
@@ -255,7 +252,7 @@ export default function SettingsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#051536]">Settings</h1>
+        <h1 className="text-xl font-bold text-[#051536]">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage your profile and system preferences</p>
       </div>
 
@@ -263,7 +260,7 @@ export default function SettingsPage() {
         <TabsList className="bg-white rounded-lg border border-border/50">
           <TabsTrigger value="profile">My Profile</TabsTrigger>
           {isHr && <TabsTrigger value="leave-types">Leave Types</TabsTrigger>}
-          {(isHr || profile?.role === 'super_admin') && <TabsTrigger value="leave-balances">Leave Customization</TabsTrigger>}
+          {isHr && <TabsTrigger value="leave-balances">Leave Customization</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile">
@@ -273,7 +270,7 @@ export default function SettingsPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
                   <User className="h-5 w-5 text-[#032364]" />
                 </div>
-                <CardTitle className="text-base font-semibold text-[#051536]">Profile Information</CardTitle>
+                <CardTitle className="text-sm font-semibold text-[#051536]">Profile Information</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -293,10 +290,6 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Phone</Label>
                   <Input value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} className="rounded-lg" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Department</Label>
-                  <Input value={profileForm.department} onChange={(e) => setProfileForm({ ...profileForm, department: e.target.value })} className="rounded-lg" />
                 </div>
                 <div className="space-y-2">
                   <Label>Job Title</Label>
@@ -322,7 +315,7 @@ export default function SettingsPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
                       <Clock className="h-5 w-5 text-[#032364]" />
                     </div>
-                    <CardTitle className="text-base font-semibold text-[#051536]">Leave Types</CardTitle>
+                    <CardTitle className="text-sm font-semibold text-[#051536]">Leave Types</CardTitle>
                   </div>
                   <Button onClick={openAddLt} size="sm" className="rounded-lg bg-[#032364] hover:bg-[#032364]/90">
                     <Plus className="mr-1 h-4 w-4" />
@@ -357,7 +350,7 @@ export default function SettingsPage() {
           </TabsContent>
         )}
 
-        {(isHr || profile?.role === 'super_admin') && (
+        {isHr && (
           <TabsContent value="leave-balances">
             <Card className="rounded-xl border-0 bg-white vcgl-shadow">
               <CardHeader className="pb-3">
@@ -366,7 +359,7 @@ export default function SettingsPage() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
                       <Clock className="h-5 w-5 text-[#032364]" />
                     </div>
-                    <CardTitle className="text-base font-semibold text-[#051536]">Leave Customization</CardTitle>
+                    <CardTitle className="text-sm font-semibold text-[#051536]">Leave Customization</CardTitle>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div className="space-y-2">

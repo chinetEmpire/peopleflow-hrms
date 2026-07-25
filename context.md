@@ -77,7 +77,6 @@ The following features are present in the codebase:
 
 # Planned Features
 
-- Departments and designations
 - Payroll
 - Recruitment
 - Performance reviews

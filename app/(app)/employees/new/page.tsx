@@ -3,7 +3,7 @@
 import { useEffect, useState, Children } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, Profile, Role, Department } from '@/lib/supabase';
+import { supabase, Profile, Role } from '@/lib/supabase';
 import { callManageEmployee } from '@/lib/manage-employee';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { CreatableSelect } from '@/components/creatable-select';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -42,10 +43,6 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEPARTMENTS = [
-  'Human Resources', 'Finance', 'Operations', 'Sales',
-  'Marketing', 'IT', 'Customer Service', 'Logistics', 'Administration',
-];
 const EMPLOYMENT_TYPES = [
   { value: 'full_time', label: 'Full Time' },
   { value: 'part_time', label: 'Part Time' },
@@ -103,8 +100,8 @@ interface FormState {
   home_address: string;
   emergency_contact_name: string;
   emergency_contact_phone: string;
-  department: string;
   job_title: string;
+  department: string;
   hire_date: string;
   employment_type: string;
   employment_status: string;
@@ -119,7 +116,7 @@ const emptyForm: FormState = {
   employee_id: '', first_name: '', last_name: '', nick_name: '',
   email: '', phone: '', gender: '', date_of_birth: '', marital_status: '',
   nationality: '', home_address: '', emergency_contact_name: '',
-  emergency_contact_phone: '', department: '', job_title: '', hire_date: '',
+  emergency_contact_phone: '', job_title: '', department: '', hire_date: '',
   employment_type: 'full_time', employment_status: 'active',
   role: 'employee', manager_id: '', bank_name: '', bank_account_number: '',
   password: '',
@@ -137,7 +134,6 @@ export default function AddEmployeePage() {
   const isAdmin = profile && ADMIN_ROLES.includes(profile.role as Role);
 
   const [managers, setManagers] = useState<Profile[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -158,12 +154,6 @@ export default function AddEmployeePage() {
       .in('role', ['manager', 'hr_admin', 'super_admin'])
       .eq('is_active', true)
       .then(({ data }) => setManagers((data as Profile[]) ?? []));
-
-    supabase
-      .from('departments')
-      .select('id,name')
-      .order('name')
-      .then(({ data }) => setDepartments((data as Department[]) ?? []));
   }, []);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -238,8 +228,8 @@ export default function AddEmployeePage() {
         home_address: form.home_address || null,
         emergency_contact_name: form.emergency_contact_name || null,
         emergency_contact_phone: form.emergency_contact_phone || null,
-        department: form.department || null,
         job_title: form.job_title || null,
+        department: form.department || null,
         hire_date: form.hire_date || null,
         employment_type: form.employment_type || null,
         employment_status: form.employment_status || null,
@@ -267,7 +257,7 @@ export default function AddEmployeePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-[#051536] truncate">Add New Employee</h1>
+          <h1 className="text-lg md:text-xl font-bold text-[#051536] truncate">Add New Employee</h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-0.5 hidden sm:block">
             Fill in the employee&apos;s information below to create their account
           </p>
@@ -313,21 +303,16 @@ export default function AddEmployeePage() {
         {/* ── Work Information ──────────────────────────────────── */}
         <SectionCard icon={Briefcase} title="Work Information">
           <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Job Title" value={form.job_title} onChange={(v) => update('job_title', v)} placeholder="Software Engineer" />
             <div className="space-y-2">
               <Label>Department</Label>
-              <Select value={form.department || '__none__'} onValueChange={(value) => update('department', value === '__none__' ? '' : value)}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No department</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CreatableSelect
+                value={form.department}
+                onChange={(v) => update('department', v)}
+                table="departments"
+                placeholder="Select or create department..."
+              />
             </div>
-            <Field label="Job Title" value={form.job_title} onChange={(v) => update('job_title', v)} placeholder="Software Engineer" />
             <Field label="Hire Date" type="date" value={form.hire_date} onChange={(v) => update('hire_date', v)} />
             <SelectField
               label="Employment Type"

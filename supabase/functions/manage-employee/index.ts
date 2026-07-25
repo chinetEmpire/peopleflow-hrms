@@ -52,11 +52,11 @@ Deno.serve(async (req: Request) => {
     if (action === "create") {
       const {
         email, password, first_name, last_name, role, employee_id,
-        department, job_title, phone, hire_date, manager_id, nick_name,
+        job_title, phone, hire_date, manager_id, nick_name,
         gender, date_of_birth, marital_status, nationality, home_address,
         emergency_contact_name, emergency_contact_phone,
         bank_name, bank_account_number,
-        employment_type, employment_status,
+        employment_type, employment_status, department,
         work_experience, education_details, dependents,
       } = body;
 
@@ -84,7 +84,6 @@ Deno.serve(async (req: Request) => {
         nick_name: nick_name || null,
         email,
         role: role || "employee",
-        department: department || null,
         job_title: job_title || null,
         phone: phone || null,
         hire_date: hire_date || null,
@@ -100,6 +99,7 @@ Deno.serve(async (req: Request) => {
         bank_account_number: bank_account_number || null,
         employment_type: employment_type || "full_time",
         employment_status: employment_status || "active",
+        department: department || null,
         work_experience: work_experience || [],
         education_details: education_details || [],
         dependents: dependents || [],

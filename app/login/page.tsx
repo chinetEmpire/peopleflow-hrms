@@ -48,12 +48,12 @@ export default function LoginPage() {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#051536] to-[#042465] shadow-lg">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#051536]">VCGL ONE</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#051536]">VCGL ONE</h1>
           <p className="mt-1 text-sm text-muted-foreground">HR Management System</p>
         </div>
 
         <div className="rounded-2xl border-0 bg-white p-8 shadow-[0px_4px_30px_rgba(0,0,0,0.15)]">
-          <h2 className="mb-1 text-xl font-semibold text-[#051536]">Sign In</h2>
+          <h2 className="mb-1 text-lg font-semibold text-[#051536]">Sign In</h2>
           <p className="mb-6 text-sm text-muted-foreground">Enter your credentials to access the dashboard</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

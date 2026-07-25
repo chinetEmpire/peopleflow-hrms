@@ -44,7 +44,7 @@ export default function TimeOffPage() {
     reason: '',
   });
 
-  const isHr = profile?.role === 'hr_admin';
+  const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
   async function loadData() {
     if (!profile) return;
@@ -71,7 +71,7 @@ export default function TimeOffPage() {
       toast.error('Unable to load your leave requests');
       setMyRequests([]);
     } else {
-      setMyRequests(reqs ?? []);
+      setMyRequests((reqs ?? []) as unknown as LeaveRequest[]);
     }
 
     // My balances
@@ -249,7 +249,7 @@ export default function TimeOffPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#051536]">Time Off</h1>
+          <h1 className="text-xl font-bold text-[#051536]">Time Off</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your leave requests and balances</p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90 w-full sm:w-auto">
@@ -280,7 +280,7 @@ export default function TimeOffPage() {
                     </div>
                     <span className="text-xs text-muted-foreground">{bal.year}</span>
                   </div>
-                  <p className="text-2xl font-bold text-[#051536]">{remaining}</p>
+                  <p className="text-xl font-bold text-[#051536]">{remaining}</p>
                   <p className="text-xs text-muted-foreground">days remaining of {bal.total_days}</p>
                   <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-secondary">
                     <div
@@ -311,7 +311,7 @@ export default function TimeOffPage() {
           <TabsContent value="approvals">
             <Card className="rounded-xl border-0 bg-white vcgl-shadow">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold text-[#051536]">Pending Approvals</CardTitle>
+                <CardTitle className="text-sm font-semibold text-[#051536]">Pending Approvals</CardTitle>
               </CardHeader>
               <CardContent>
                 {pendingApprovals.length === 0 ? (
@@ -354,7 +354,7 @@ export default function TimeOffPage() {
         <TabsContent value="mine">
           <Card className="rounded-xl border-0 bg-white vcgl-shadow">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-[#051536]">My Leave Requests</CardTitle>
+              <CardTitle className="text-sm font-semibold text-[#051536]">My Leave Requests</CardTitle>
             </CardHeader>
             <CardContent>
               {myRequests.length === 0 ? (

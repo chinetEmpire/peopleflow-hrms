@@ -14,7 +14,7 @@ Extends Supabase auth.users with employee profile data.
 - `first_name`, `last_name`, `nick_name` - Name fields
 - `email` - Employee email
 - `role` - One of: employee, manager, hr_admin, super_admin
-- `department`, `job_title`, `phone` - Work info
+- `job_title`, `phone` - Work info
 - `avatar_url` - Profile photo
 - `hire_date` - Employment start date
 - `manager_id` - FK to profiles (their direct manager)
@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   nick_name text,
   email text NOT NULL DEFAULT '',
   role text NOT NULL DEFAULT 'employee' CHECK (role IN ('employee', 'manager', 'hr_admin', 'super_admin')),
-  department text,
   job_title text,
   phone text,
   avatar_url text,
@@ -343,7 +342,7 @@ RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, auth
-AS $
+AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, first_name, last_name, role)
   VALUES (
@@ -356,7 +355,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

@@ -18,7 +18,7 @@ export default function ReportsPage() {
   const [activeReport, setActiveReport] = useState<'daily' | 'weekly' | 'monthly' | 'leave'>('daily');
   const [exporting, setExporting] = useState(false);
 
-  const isHr = profile?.role === 'hr_admin';
+  const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
   const isManager = profile?.role === 'manager';
 
   const formatCsvValue = (value: unknown) => {
@@ -223,7 +223,7 @@ export default function ReportsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#051536]">Reports</h1>
+        <h1 className="text-xl font-bold text-[#051536]">Reports</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isManager ? 'Your team attendance and leave analytics' : 'Company-wide attendance and leave analytics'}
         </p>
@@ -240,7 +240,7 @@ export default function ReportsPage() {
       {/* Monthly Trend Chart */}
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#051536]">Attendance Trend (Last 6 Months)</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Attendance Trend (Last 6 Months)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-48 sm:h-64 items-end justify-around gap-2 sm:gap-4 overflow-x-auto">
@@ -278,7 +278,7 @@ export default function ReportsPage() {
       {/* Per-Employee Breakdown */}
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#051536]">Per-Employee Breakdown</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Per-Employee Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
           {employees.length === 0 ? (
@@ -297,7 +297,7 @@ export default function ReportsPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium">{emp.first_name} {emp.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{emp.job_title ?? emp.department ?? 'Employee'}</p>
+                        <p className="text-xs text-muted-foreground">{emp.job_title ?? 'Employee'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 pl-12 sm:pl-0">
@@ -324,23 +324,23 @@ export default function ReportsPage() {
       {/* Leave Summary */}
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#051536]">Leave Summary</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Leave Summary</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4">
             <div className="flex flex-col items-center rounded-lg bg-green-50 p-4">
               <CheckCircle2 className="h-8 w-8 text-green-600" />
-              <p className="mt-2 text-2xl font-bold text-green-700">{leaveStats.approved}</p>
+              <p className="mt-2 text-xl font-bold text-green-700">{leaveStats.approved}</p>
               <p className="text-xs text-muted-foreground">Approved</p>
             </div>
             <div className="flex flex-col items-center rounded-lg bg-amber-50 p-4">
               <Clock3 className="h-8 w-8 text-amber-600" />
-              <p className="mt-2 text-2xl font-bold text-amber-700">{leaveStats.pending}</p>
+              <p className="mt-2 text-xl font-bold text-amber-700">{leaveStats.pending}</p>
               <p className="text-xs text-muted-foreground">Pending</p>
             </div>
             <div className="flex flex-col items-center rounded-lg bg-red-50 p-4">
               <XCircle className="h-8 w-8 text-red-600" />
-              <p className="mt-2 text-2xl font-bold text-red-700">{leaveStats.rejected}</p>
+              <p className="mt-2 text-xl font-bold text-red-700">{leaveStats.rejected}</p>
               <p className="text-xs text-muted-foreground">Rejected</p>
             </div>
           </div>
@@ -349,7 +349,7 @@ export default function ReportsPage() {
 
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-[#051536]">Export Reports</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Export Reports</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeReport} onValueChange={(value) => setActiveReport(value as 'daily' | 'weekly' | 'monthly' | 'leave')}>
@@ -412,7 +412,7 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ComponentTy
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-bold text-[#051536] mt-1">{value}</p>
+            <p className="text-xl font-bold text-[#051536] mt-1">{value}</p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: color + '15' }}>
             <Icon className="h-6 w-6" style={{ color }} />

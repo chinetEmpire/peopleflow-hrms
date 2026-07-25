@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Search, Pencil, Trash2, Users, Mail, Phone, Briefcase, Building, X } from 'lucide-react';
+import { UserPlus, Search, Pencil, Trash2, Users, Mail, Phone, Briefcase, X } from 'lucide-react';
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -44,7 +44,6 @@ export default function EmployeesPage() {
     nick_name: '',
     email: '',
     role: 'employee' as Role,
-    department: '',
     job_title: '',
     phone: '',
     hire_date: '',
@@ -78,7 +77,6 @@ export default function EmployeesPage() {
       nick_name: '',
       email: '',
       role: 'employee',
-      department: '',
       job_title: '',
       phone: '',
       hire_date: '',
@@ -97,7 +95,6 @@ export default function EmployeesPage() {
       nick_name: emp.nick_name ?? '',
       email: emp.email,
       role: emp.role,
-      department: emp.department ?? '',
       job_title: emp.job_title ?? '',
       phone: emp.phone ?? '',
       hire_date: emp.hire_date ?? '',
@@ -121,7 +118,6 @@ export default function EmployeesPage() {
           nick_name: form.nick_name || null,
           email: form.email,
           role: form.role,
-          department: form.department || null,
           job_title: form.job_title || null,
           phone: form.phone || null,
           hire_date: form.hire_date || null,
@@ -138,7 +134,6 @@ export default function EmployeesPage() {
           nick_name: form.nick_name || null,
           role: form.role,
           employee_id: form.employee_id || null,
-          department: form.department || null,
           job_title: form.job_title || null,
           phone: form.phone || null,
           hire_date: form.hire_date || null,
@@ -175,8 +170,7 @@ export default function EmployeesPage() {
       e.first_name.toLowerCase().includes(q) ||
       e.last_name.toLowerCase().includes(q) ||
       e.email.toLowerCase().includes(q) ||
-      (e.employee_id ?? '').toLowerCase().includes(q) ||
-      (e.department ?? '').toLowerCase().includes(q)
+      (e.employee_id ?? '').toLowerCase().includes(q)
     );
   });
 
@@ -200,7 +194,7 @@ export default function EmployeesPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#051536]">Employees</h1>
+          <h1 className="text-xl font-bold text-[#051536]">Employees</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage all employee accounts</p>
         </div>
         <Button onClick={() => router.push('/employees/new')} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90 w-full sm:w-auto">
@@ -254,10 +248,6 @@ export default function EmployeesPage() {
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Briefcase className="h-3.5 w-3.5" />
                     {emp.job_title ?? 'No title'}
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building className="h-3.5 w-3.5" />
-                    {emp.department ?? 'No department'}
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground truncate">
                     <Mail className="h-3.5 w-3.5 shrink-0" />
@@ -315,7 +305,6 @@ export default function EmployeesPage() {
             <div>
               <h3 className="mb-3 text-sm font-medium text-[#051536]">Work Information</h3>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Department" value={form.department} onChange={(v) => setForm({ ...form, department: v })} />
                 <FormField label="Job Title" value={form.job_title} onChange={(v) => setForm({ ...form, job_title: v })} />
                 <FormField label="Hire Date" value={form.hire_date} onChange={(v) => setForm({ ...form, hire_date: v })} type="date" />
 

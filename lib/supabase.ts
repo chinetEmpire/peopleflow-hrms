@@ -21,7 +21,6 @@ export interface Profile {
   nick_name: string | null;
   email: string;
   role: Role;
-  department: string | null;
   job_title: string | null;
   phone: string | null;
   avatar_url: string | null;
@@ -41,6 +40,7 @@ export interface Profile {
   bank_account_number: string | null;
   employment_type: string | null;
   employment_status: string | null;
+  department: string | null;
   work_experience: WorkExperience[] | null;
   education_details: EducationDetail[] | null;
   dependents: Dependent[] | null;
@@ -91,15 +91,6 @@ export interface LeaveType {
   days_allowed: number;
   color: string;
   is_active: boolean;
-}
-
-export interface Department {
-  id: string;
-  name: string;
-  manager_id: string | null;
-  created_at?: string;
-  updated_at?: string;
-  manager?: Profile;
 }
 
 export interface LeaveBalance {

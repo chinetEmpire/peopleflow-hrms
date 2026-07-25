@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LogIn, LogOut, Clock, Calendar, CheckCircle2, XCircle, AlertCircle, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AttendancePage() {
   const { profile } = useAuth();
@@ -20,7 +21,7 @@ export default function AttendancePage() {
   const [year, setYear] = useState(new Date().getFullYear());
 
   const isManager = profile?.role === 'manager';
-  const isHr = profile?.role === 'hr_admin';
+  const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
   const getCurrentLocation = async (): Promise<{ lat: number; lng: number } | null> => {
     if (!navigator.geolocation) return null;
@@ -129,6 +130,7 @@ export default function AttendancePage() {
     }
 
     const updateDuration = () => {
+      if (!todayRecord.check_in) return;
       const startTime = new Date(todayRecord.check_in).getTime();
       const endTime = todayRecord.check_out ? new Date(todayRecord.check_out).getTime() : Date.now();
       setLiveDuration(formatDuration(endTime - startTime));
@@ -144,6 +146,10 @@ export default function AttendancePage() {
 
   async function handleCheckIn() {
     if (!profile) return;
+    if (todayRecord?.check_in && !todayRecord?.check_out) {
+      toast.error('You have already checked in today. Please check out first.');
+      return;
+    }
     setClockLoading(true);
     const location = await getCurrentLocation();
     if (!location) {
@@ -218,7 +224,7 @@ export default function AttendancePage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#051536]">Attendance</h1>
+        <h1 className="text-xl font-bold text-[#051536]">Attendance</h1>
         <p className="text-sm text-muted-foreground mt-1">Track your daily check-in and check-out</p>
       </div>
 
@@ -231,7 +237,7 @@ export default function AttendancePage() {
                 <Clock className="h-7 w-7 text-[#032364]" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#051536]">Today&apos;s Attendance</h3>
+                <h3 className="text-base font-semibold text-[#051536]">Today&apos;s Attendance</h3>
                 <p className="text-sm text-muted-foreground">
                   {todayRecord?.check_in
                     ? `Checked in at ${new Date(todayRecord.check_in).toLocaleTimeString()}`
@@ -257,6 +263,14 @@ export default function AttendancePage() {
                 {todayRecord && <div className="mt-1">{statusBadge(todayRecord.status)}</div>}
               </div>
             </div>
+            {todayRecord?.check_in && (
+              <div className="flex flex-col items-center gap-1 sm:items-end">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                  {todayRecord?.check_out ? 'Total Time Worked' : 'Time Worked Today'}
+                </p>
+                <p className="text-5xl font-mono font-bold text-[#032364] tabular-nums">{liveDuration}</p>
+              </div>
+            )}
             <div className="flex w-full gap-3 sm:w-auto">
               <Button
                 onClick={handleCheckIn}
@@ -284,7 +298,7 @@ export default function AttendancePage() {
       {(isManager || isHr) && (
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-[#051536]">Team Attendance Today</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Team Attendance Today</CardTitle>
           </CardHeader>
           <CardContent>
             {teamRecords.length === 0 ? (
@@ -335,7 +349,7 @@ export default function AttendancePage() {
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base font-semibold text-[#051536]">My Attendance History</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">My Attendance History</CardTitle>
             <div className="flex flex-wrap items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <select
