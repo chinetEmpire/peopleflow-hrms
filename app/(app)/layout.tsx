@@ -11,6 +11,9 @@ import {
   Sheet,
   SheetContent,
 } from '@/components/ui/sheet';
+import { NotificationBell } from '@/components/notifications/notification-bell';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useAttendanceReminders } from '@/hooks/use-attendance-reminders';
 import {
   LayoutDashboard,
   Calendar,
@@ -160,6 +163,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, profile, loading, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification: deleteNotif,
+  } = useNotifications(profile?.id);
+
+  useAttendanceReminders(profile, null);
+
   useEffect(() => {
     if (!loading && (!user || !profile)) {
       router.replace('/login');
@@ -243,6 +256,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </p>
               <p className="text-xs font-medium text-black">{roleLabel(profile.role)}</p>
             </div>
+          </div>
+
+          <div className="ml-auto">
+            <NotificationBell
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              onDelete={deleteNotif}
+            />
           </div>
         </header>
 

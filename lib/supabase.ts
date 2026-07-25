@@ -142,3 +142,20 @@ export interface AuditLog {
   created_at: string;
   profiles?: Profile;
 }
+
+export type NotificationType =
+  | 'check_in_reminder'
+  | 'check_out_reminder'
+  | 'leave_approved'
+  | 'leave_rejected';
+
+export interface NotificationRecord {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  type: NotificationType;
+  metadata: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string;
+}
