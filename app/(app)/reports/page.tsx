@@ -292,8 +292,12 @@ export default function ReportsPage() {
                 return (
                   <div key={emp.id} className="flex flex-col gap-3 rounded-lg border border-border/50 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white">
-                        {emp.first_name[0]}{emp.last_name[0]}
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white overflow-hidden shrink-0">
+                        {emp.avatar_url ? (
+                          <img src={emp.avatar_url} alt={`${emp.first_name} ${emp.last_name}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <span>{emp.first_name[0]}{emp.last_name[0]}</span>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium">{emp.first_name} {emp.last_name}</p>

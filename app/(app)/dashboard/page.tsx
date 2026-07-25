@@ -472,8 +472,12 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {teamMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#032364] text-sm font-semibold text-white">
-                    {member.first_name[0]}{member.last_name[0]}
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#032364] text-sm font-semibold text-white overflow-hidden shrink-0">
+                    {member.avatar_url ? (
+                      <img src={member.avatar_url} alt={`${member.first_name} ${member.last_name}`} className="h-full w-full object-cover" />
+                    ) : (
+                      <span>{member.first_name[0]}{member.last_name[0]}</span>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium">{member.first_name} {member.last_name}</p>

@@ -308,8 +308,12 @@ export default function AttendancePage() {
                 {teamRecords.map(({ record, employee }) => (
                   <div key={record.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white">
-                        {employee.first_name[0]}{employee.last_name[0]}
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white overflow-hidden shrink-0">
+                        {employee.avatar_url ? (
+                          <img src={employee.avatar_url} alt={`${employee.first_name} ${employee.last_name}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <span>{employee.first_name[0]}{employee.last_name[0]}</span>
+                        )}
                       </div>
                       <div>
                         <p className="text-sm font-medium">{employee.first_name} {employee.last_name}</p>

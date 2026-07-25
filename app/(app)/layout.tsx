@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading || !profile) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f2e9e9]">
+      <div className="flex h-full items-center justify-center bg-[#f2e9e9]">
         <Loader2 className="h-8 w-8 animate-spin text-[#0e3a94]" />
       </div>
     );
@@ -188,7 +188,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#f2e9e9]">
+    <div className="flex h-full w-full overflow-hidden bg-[#f2e9e9]">
       {/* Desktop Sidebar */}
       <aside className="sidebar-gradient hidden md:flex w-[220px] shrink-0 flex-col py-6">
         <SidebarContent
@@ -247,7 +247,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto scrollbar-thin">
+        <main className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
           {children}
         </main>
       </div>

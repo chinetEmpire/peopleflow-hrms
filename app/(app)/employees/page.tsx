@@ -26,7 +26,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Search, Pencil, Trash2, Users, Mail, Phone, Briefcase, X } from 'lucide-react';
+import { UserPlus, Search, Pencil, Trash2, Users, Mail, Phone, Briefcase, X, LayoutGrid, Table } from 'lucide-react';
+import {
+  Table as TableComponent,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -51,6 +59,9 @@ export default function EmployeesPage() {
     password: '',
   });
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+
+  const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
   async function loadEmployees() {
     setLoading(true);
@@ -203,18 +214,46 @@ export default function EmployeesPage() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search employees..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg pl-10"
-        />
+      {/* Search & View Toggle */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search employees..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-lg pl-10"
+          />
+        </div>
+        {isHr && (
+          <div className="flex items-center gap-1 rounded-lg border border-border/50 bg-white p-1">
+            <button
+              onClick={() => setViewMode('card')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                viewMode === 'card'
+                  ? 'bg-[#032364] text-white'
+                  : 'text-muted-foreground hover:text-[#051536]'
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Card
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                viewMode === 'table'
+                  ? 'bg-[#032364] text-white'
+                  : 'text-muted-foreground hover:text-[#051536]'
+              }`}
+            >
+              <Table className="h-4 w-4" />
+              Table
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Employee Grid */}
+      {/* Employee Grid / Table */}
       {loading ? (
         <div className="flex justify-center py-12">
           <p className="text-muted-foreground">Loading employees...</p>
@@ -226,6 +265,63 @@ export default function EmployeesPage() {
             <p className="mt-4 text-sm text-muted-foreground">No employees found.</p>
           </CardContent>
         </Card>
+      ) : viewMode === 'table' && isHr ? (
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <TableComponent>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Employee ID</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Job Title</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((emp) => (
+                <TableRow key={emp.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white overflow-hidden shrink-0">
+                        {emp.avatar_url ? (
+                          <img src={emp.avatar_url} alt={`${emp.first_name} ${emp.last_name}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <span>{emp.first_name[0]}{emp.last_name[0]}</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-[#051536]">{emp.first_name} {emp.last_name}</p>
+                        {emp.nick_name && <p className="text-xs text-muted-foreground">({emp.nick_name})</p>}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{emp.employee_id ?? '—'}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5" />
+                      <span className="truncate max-w-[200px]">{emp.email}</span>
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{emp.phone ?? '—'}</TableCell>
+                  <TableCell>{roleBadge(emp.role)}</TableCell>
+                  <TableCell className="text-muted-foreground">{emp.job_title ?? '—'}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => openEdit(emp)} className="h-8 w-8 p-0">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleDelete(emp)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </TableComponent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((emp) => (
@@ -233,8 +329,12 @@ export default function EmployeesPage() {
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#032364] text-sm font-semibold text-white">
-                      {emp.first_name[0]}{emp.last_name[0]}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#032364] text-sm font-semibold text-white overflow-hidden shrink-0">
+                      {emp.avatar_url ? (
+                        <img src={emp.avatar_url} alt={`${emp.first_name} ${emp.last_name}`} className="h-full w-full object-cover" />
+                      ) : (
+                        <span>{emp.first_name[0]}{emp.last_name[0]}</span>
+                      )}
                     </div>
                     <div>
                       <p className="font-semibold text-[#051536]">{emp.first_name} {emp.last_name}</p>
