@@ -181,19 +181,19 @@ TO authenticated USING (true);
 DROP POLICY IF EXISTS "leave_types_insert" ON leave_types;
 CREATE POLICY "leave_types_insert" ON leave_types FOR INSERT
 TO authenticated WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin')
+  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin'))
 );
 
 DROP POLICY IF EXISTS "leave_types_update" ON leave_types;
 CREATE POLICY "leave_types_update" ON leave_types FOR UPDATE
 TO authenticated
-USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin'))
-WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin'));
+USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin')))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin')));
 
 DROP POLICY IF EXISTS "leave_types_delete" ON leave_types;
 CREATE POLICY "leave_types_delete" ON leave_types FOR DELETE
 TO authenticated
-USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin'));
+USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin')));
 
 -- Leave balances
 CREATE TABLE IF NOT EXISTS leave_balances (
@@ -221,19 +221,19 @@ TO authenticated USING (
 DROP POLICY IF EXISTS "leave_balances_insert" ON leave_balances;
 CREATE POLICY "leave_balances_insert" ON leave_balances FOR INSERT
 TO authenticated WITH CHECK (
-  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin')
+  EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin'))
 );
 
 DROP POLICY IF EXISTS "leave_balances_update" ON leave_balances;
 CREATE POLICY "leave_balances_update" ON leave_balances FOR UPDATE
 TO authenticated
-USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin'))
-WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin'));
+USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin')))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin')));
 
 DROP POLICY IF EXISTS "leave_balances_delete" ON leave_balances;
 CREATE POLICY "leave_balances_delete" ON leave_balances FOR DELETE
 TO authenticated
-USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin'));
+USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin')));
 
 -- Leave requests
 CREATE TABLE IF NOT EXISTS leave_requests (
@@ -270,11 +270,11 @@ CREATE POLICY "leave_requests_update" ON leave_requests FOR UPDATE
 TO authenticated
 USING (
   employee_id = auth.uid()
-  OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin'))
+  OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin'))
 )
 WITH CHECK (
   employee_id = auth.uid()
-  OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin'))
+  OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin'))
 );
 
 DROP POLICY IF EXISTS "leave_requests_delete" ON leave_requests;
@@ -282,7 +282,7 @@ CREATE POLICY "leave_requests_delete" ON leave_requests FOR DELETE
 TO authenticated
 USING (
   (employee_id = auth.uid() AND status = 'pending')
-  OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'hr_admin')
+  OR EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role IN ('hr_admin', 'super_admin'))
 );
 
 -- Audit logs
