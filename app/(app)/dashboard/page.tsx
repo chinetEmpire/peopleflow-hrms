@@ -255,13 +255,23 @@ export default function DashboardPage() {
                   {todayRecord?.check_in_lat && todayRecord?.check_in_lng ? (
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" />
-                      Check-in: {todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng.toFixed(4)}
+                      Check-in: <a
+                        href={`https://www.google.com/maps?q=${todayRecord.check_in_lat},${todayRecord.check_in_lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-[#032364]"
+                      >{todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng.toFixed(4)}</a>
                     </p>
                   ) : null}
                   {todayRecord?.check_out_lat && todayRecord?.check_out_lng ? (
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <MapPin className="h-3.5 w-3.5" />
-                      Check-out: {todayRecord.check_out_lat.toFixed(4)}, {todayRecord.check_out_lng.toFixed(4)}
+                      Check-out: <a
+                        href={`https://www.google.com/maps?q=${todayRecord.check_out_lat},${todayRecord.check_out_lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-[#032364]"
+                      >{todayRecord.check_out_lat.toFixed(4)}, {todayRecord.check_out_lng.toFixed(4)}</a>
                     </p>
                   ) : null}
                 </div>
