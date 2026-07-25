@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Children } from 'react';
+import { Suspense, useEffect, useState, Children } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getSupabase, Profile, Role } from '@/lib/supabase';
@@ -129,6 +129,18 @@ const emptyDep: Dependent = { name: '', relationship: '', date_of_birth: '', gen
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AddEmployeePage() {
+  return (
+    <Suspense fallback={
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0e3a94]" />
+      </div>
+    }>
+      <AddEmployeeForm />
+    </Suspense>
+  );
+}
+
+function AddEmployeeForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');

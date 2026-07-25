@@ -90,8 +90,8 @@ export default function ReportsPage() {
         rec.check_out ?? '',
         rec.status,
         rec.check_in && rec.check_out ? String(Math.round((new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / 1000 / 60)) : '',
-        rec.check_in_lat != null && rec.check_in_lng != null ? `https://www.google.com/maps?q=${rec.check_in_lat},${rec.check_in_lng}` : '',
-        rec.check_out_lat != null && rec.check_out_lng != null ? `https://www.google.com/maps?q=${rec.check_out_lat},${rec.check_out_lng}` : '',
+        rec.check_in_location ?? '',
+        rec.check_out_location ?? '',
       ]);
       const headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Status', 'Duration (minutes)', 'Check-in Location', 'Check-out Location'];
       const content = format === 'csv' ? buildCsv(headers, rows) : buildXls(headers, rows);

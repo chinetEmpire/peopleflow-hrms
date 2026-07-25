@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { formatDuration, attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
 import { getSupabase, AttendanceRecord, Profile } from '@/lib/supabase';
+import { reverseGeocode } from '@/lib/geocode';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -158,6 +159,7 @@ export default function AttendancePage() {
       return;
     }
 
+    const locationName = await reverseGeocode(location.lat, location.lng);
     const now = new Date().toISOString();
     const today = new Date().toISOString().split('T')[0];
 
@@ -169,6 +171,7 @@ export default function AttendancePage() {
         check_in: now,
         check_in_lat: location.lat,
         check_in_lng: location.lng,
+        check_in_location: locationName,
         status: 'present',
       })
       .select('*')
@@ -188,6 +191,7 @@ export default function AttendancePage() {
       return;
     }
 
+    const locationName = await reverseGeocode(location.lat, location.lng);
     const now = new Date().toISOString();
     const status = attendanceStatusFromDuration(todayRecord.check_in, now);
 
@@ -197,6 +201,7 @@ export default function AttendancePage() {
         check_out: now,
         check_out_lat: location.lat,
         check_out_lng: location.lng,
+        check_out_location: locationName,
         status,
       })
       .eq('id', todayRecord.id)
@@ -248,26 +253,26 @@ export default function AttendancePage() {
                     ? ' • Still working'
                     : ''}
                 </p>
-                {todayRecord?.check_in_lat && todayRecord?.check_in_lng ? (
+                {todayRecord?.check_in_location ? (
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    Check-in: <a
-                      href={`https://www.google.com/maps?q=${todayRecord.check_in_lat},${todayRecord.check_in_lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-[#032364]"
-                    >{todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng.toFixed(4)}</a>
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    Check-in: {todayRecord.check_in_location}
+                  </p>
+                ) : todayRecord?.check_in_lat && todayRecord?.check_in_lng ? (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    Check-in: {todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng.toFixed(4)}
                   </p>
                 ) : null}
-                {todayRecord?.check_out_lat && todayRecord?.check_out_lng ? (
+                {todayRecord?.check_out_location ? (
                   <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    Check-out: <a
-                      href={`https://www.google.com/maps?q=${todayRecord.check_out_lat},${todayRecord.check_out_lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-[#032364]"
-                    >{todayRecord.check_out_lat.toFixed(4)}, {todayRecord.check_out_lng.toFixed(4)}</a>
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    Check-out: {todayRecord.check_out_location}
+                  </p>
+                ) : todayRecord?.check_out_lat && todayRecord?.check_out_lng ? (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    Check-out: {todayRecord.check_out_lat.toFixed(4)}, {todayRecord.check_out_lng.toFixed(4)}
                   </p>
                 ) : null}
                 {todayRecord && <div className="mt-1">{statusBadge(todayRecord.status)}</div>}
@@ -336,26 +341,26 @@ export default function AttendancePage() {
                             )}</>
                           )}
                         </p>
-                        {record.check_in_lat && record.check_in_lng ? (
+                        {record.check_in_location ? (
                           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5" />
-                            In: <a
-                              href={`https://www.google.com/maps?q=${record.check_in_lat},${record.check_in_lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline hover:text-[#032364]"
-                            >{record.check_in_lat.toFixed(4)}, {record.check_in_lng.toFixed(4)}</a>
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            In: {record.check_in_location}
+                          </p>
+                        ) : record.check_in_lat && record.check_in_lng ? (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            In: {record.check_in_lat.toFixed(4)}, {record.check_in_lng.toFixed(4)}
                           </p>
                         ) : null}
-                        {record.check_out_lat && record.check_out_lng ? (
+                        {record.check_out_location ? (
                           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5" />
-                            Out: <a
-                              href={`https://www.google.com/maps?q=${record.check_out_lat},${record.check_out_lng}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline hover:text-[#032364]"
-                            >{record.check_out_lat.toFixed(4)}, {record.check_out_lng.toFixed(4)}</a>
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            Out: {record.check_out_location}
+                          </p>
+                        ) : record.check_out_lat && record.check_out_lng ? (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5 shrink-0" />
+                            Out: {record.check_out_lat.toFixed(4)}, {record.check_out_lng.toFixed(4)}
                           </p>
                         ) : null}
                       </div>
