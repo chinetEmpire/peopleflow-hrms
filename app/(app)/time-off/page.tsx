@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, LeaveRequest, LeaveType, LeaveBalance, Profile } from '@/lib/supabase';
+import { getSupabase, LeaveRequest, LeaveType, LeaveBalance, Profile } from '@/lib/supabase';
 import { logAction } from '@/lib/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,7 +50,7 @@ export default function TimeOffPage() {
     if (!profile) return;
 
     // Leave types
-    const { data: types, error: typesError } = await supabase.from('leave_types').select('*').eq('is_active', true);
+    const { data: types, error: typesError } = await getSupabase().from('leave_types').select('*').eq('is_active', true);
     if (typesError) {
       console.error('Failed to load leave types', typesError);
       toast.error('Unable to load leave types');
@@ -60,7 +60,7 @@ export default function TimeOffPage() {
     }
 
     // My requests
-    const { data: reqs, error: reqsError } = await supabase
+    const { data: reqs, error: reqsError } = await getSupabase()
       .from('leave_requests')
       .select('id, employee_id, leave_type_id, start_date, end_date, days_requested, reason, status, approved_by, approved_at, rejection_reason, created_at, leave_types(name, color)')
       .eq('employee_id', profile.id)
@@ -75,7 +75,7 @@ export default function TimeOffPage() {
     }
 
     // My balances
-    const { data: bals, error: balsError } = await supabase
+    const { data: bals, error: balsError } = await getSupabase()
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', profile.id)
@@ -90,7 +90,7 @@ export default function TimeOffPage() {
 
     // Pending approvals (HR)
     if (isHr) {
-      const { data: pending, error: pendingError } = await supabase
+      const { data: pending, error: pendingError } = await getSupabase()
         .from('leave_requests')
         .select('*, leave_types(*), profiles!employee_id(id, first_name, last_name)')
         .eq('status', 'pending')
@@ -129,7 +129,7 @@ export default function TimeOffPage() {
     try {
       const days = calculateDays(form.start_date, form.end_date);
 
-      const { data: insertedRequest, error: insertError } = await supabase.from('leave_requests').insert({
+      const { data: insertedRequest, error: insertError } = await getSupabase().from('leave_requests').insert({
         employee_id: profile.id,
         leave_type_id: form.leave_type_id,
         start_date: form.start_date,
@@ -144,7 +144,7 @@ export default function TimeOffPage() {
       // Update pending days in balance
       const bal = balances.find((b) => b.leave_type_id === form.leave_type_id);
       if (bal) {
-        await supabase.from('leave_balances')
+        await getSupabase().from('leave_balances')
           .update({ pending_days: bal.pending_days + days })
           .eq('id', bal.id);
       }
@@ -167,7 +167,7 @@ export default function TimeOffPage() {
   async function handleApprove(req: LeaveRequest) {
     if (!profile) return;
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('leave_requests')
         .update({
           status: 'approved',
@@ -178,7 +178,7 @@ export default function TimeOffPage() {
       if (error) throw error;
 
       // Update balance: move pending to used
-      const { data: bal } = await supabase
+      const { data: bal } = await getSupabase()
         .from('leave_balances')
         .select('*')
         .eq('employee_id', req.employee_id)
@@ -187,7 +187,7 @@ export default function TimeOffPage() {
         .maybeSingle();
 
       if (bal) {
-        await supabase.from('leave_balances')
+        await getSupabase().from('leave_balances')
           .update({
             pending_days: Math.max(0, bal.pending_days - req.days_requested),
             used_days: bal.used_days + req.days_requested,
@@ -209,7 +209,7 @@ export default function TimeOffPage() {
     if (!reason) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('leave_requests')
         .update({
           status: 'rejected',
@@ -221,7 +221,7 @@ export default function TimeOffPage() {
       if (error) throw error;
 
       // Revert pending days
-      const { data: bal } = await supabase
+      const { data: bal } = await getSupabase()
         .from('leave_balances')
         .select('*')
         .eq('employee_id', req.employee_id)
@@ -230,7 +230,7 @@ export default function TimeOffPage() {
         .maybeSingle();
 
       if (bal) {
-        await supabase.from('leave_balances')
+        await getSupabase().from('leave_balances')
           .update({ pending_days: Math.max(0, bal.pending_days - req.days_requested) })
           .eq('id', bal.id);
       }

@@ -1,9 +1,9 @@
 'use client';
 
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 
 export async function callManageEmployee(action: string, data: Record<string, unknown>) {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await getSupabase().auth.getSession();
   if (!session) throw new Error('Not authenticated');
 
   const res = await fetch('/api/employees', {

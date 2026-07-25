@@ -1,6 +1,6 @@
 'use client';
 
-import { supabase } from './supabase';
+import { getSupabase } from './supabase';
 
 export async function logAction(
   actorId: string | null,
@@ -10,7 +10,7 @@ export async function logAction(
   details?: Record<string, unknown>
 ) {
   try {
-    await supabase.from('audit_logs').insert({
+    await getSupabase().from('audit_logs').insert({
       actor_id: actorId,
       action,
       entity,

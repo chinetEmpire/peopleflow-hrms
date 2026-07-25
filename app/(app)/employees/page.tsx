@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, Profile, Role } from '@/lib/supabase';
+import { getSupabase, Profile, Role } from '@/lib/supabase';
 import { callManageEmployee } from '@/lib/manage-employee';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,7 @@ export default function EmployeesPage() {
 
   async function loadEmployees() {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });

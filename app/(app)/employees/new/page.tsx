@@ -3,7 +3,7 @@
 import { useEffect, useState, Children } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, Profile, Role } from '@/lib/supabase';
+import { getSupabase, Profile, Role } from '@/lib/supabase';
 import { callManageEmployee } from '@/lib/manage-employee';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -148,7 +148,7 @@ export default function AddEmployeePage() {
   const [depDialog, setDepDialog] = useState<{ open: boolean; data: Dependent; index: number | null }>({ open: false, data: emptyDep, index: null });
 
   useEffect(() => {
-    supabase
+    getSupabase()
       .from('profiles')
       .select('id,first_name,last_name,role')
       .in('role', ['manager', 'hr_admin', 'super_admin'])

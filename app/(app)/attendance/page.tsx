@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { formatDuration, attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
-import { supabase, AttendanceRecord, Profile } from '@/lib/supabase';
+import { getSupabase, AttendanceRecord, Profile } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +44,7 @@ export default function AttendancePage() {
     if (!shouldAutoCheckout(record.check_in, record.check_out)) return record;
 
     const checkoutAt = getAutoCheckoutTime(record.check_in);
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .update({ check_out: checkoutAt, status: 'absent' })
       .eq('id', record.id)
@@ -59,7 +59,7 @@ export default function AttendancePage() {
     const startDate = new Date(year, month, 1).toISOString().split('T')[0];
     const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .select('*')
       .eq('employee_id', profile.id)
@@ -69,7 +69,7 @@ export default function AttendancePage() {
     setRecords(data ?? []);
 
     const today = new Date().toISOString().split('T')[0];
-    const { data: todayData } = await supabase
+    const { data: todayData } = await getSupabase()
       .from('attendance_records')
       .select('*')
       .eq('employee_id', profile.id)
@@ -84,7 +84,7 @@ export default function AttendancePage() {
     if (!profile || (!isManager && !isHr)) return;
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: team } = await supabase
+    const { data: team } = await getSupabase()
       .from('profiles')
       .select('*')
       .eq(isManager ? 'manager_id' : 'is_active', isManager ? profile.id : true)
@@ -95,7 +95,7 @@ export default function AttendancePage() {
       return;
     }
 
-    const { data: atts } = await supabase
+    const { data: atts } = await getSupabase()
       .from('attendance_records')
       .select('*')
       .eq('date', today)
@@ -161,7 +161,7 @@ export default function AttendancePage() {
     const now = new Date().toISOString();
     const today = new Date().toISOString().split('T')[0];
 
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .upsert({
         employee_id: profile.id,
@@ -191,7 +191,7 @@ export default function AttendancePage() {
     const now = new Date().toISOString();
     const status = attendanceStatusFromDuration(todayRecord.check_in, now);
 
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .update({
         check_out: now,

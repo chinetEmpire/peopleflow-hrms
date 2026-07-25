@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, LeaveType, LeaveBalance, Profile } from '@/lib/supabase';
+import { getSupabase, LeaveType, LeaveBalance, Profile } from '@/lib/supabase';
 import { logAction } from '@/lib/audit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ export default function SettingsPage() {
   }, [profile]);
 
   async function loadLeaveTypes() {
-    const { data } = await supabase.from('leave_types').select('*').order('name');
+    const { data } = await getSupabase().from('leave_types').select('*').order('name');
     setLeaveTypes(data ?? []);
   }
 
@@ -70,7 +70,7 @@ export default function SettingsPage() {
   }, [profile]);
 
   async function loadEmployees() {
-    const { data } = await supabase.from('profiles').select('*').eq('is_active', true).order('first_name');
+    const { data } = await getSupabase().from('profiles').select('*').eq('is_active', true).order('first_name');
     setEmployees(data ?? []);
     if (data && data.length > 0) {
       setSelectedEmployeeId((prev) => prev || data[0].id);
@@ -84,7 +84,7 @@ export default function SettingsPage() {
   }, [selectedEmployeeId, selectedYear]);
 
   async function loadEmployeeBalances(employeeId: string, year: number) {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', employeeId)
@@ -145,10 +145,10 @@ export default function SettingsPage() {
           pending_days: bal.pending_days,
         };
         if (bal.id) {
-          const { error } = await supabase.from('leave_balances').update(payload).eq('id', bal.id);
+          const { error } = await getSupabase().from('leave_balances').update(payload).eq('id', bal.id);
           if (error) throw error;
         } else {
-          const { error } = await supabase.from('leave_balances').insert(payload);
+          const { error } = await getSupabase().from('leave_balances').insert(payload);
           if (error) throw error;
         }
       }
@@ -165,7 +165,7 @@ export default function SettingsPage() {
     if (!profile) return;
     setSavingProfile(true);
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('profiles')
         .update({
           first_name: profileForm.first_name,
@@ -203,7 +203,7 @@ export default function SettingsPage() {
     setSavingLt(true);
     try {
       if (editingLt) {
-        const { error } = await supabase
+        const { error } = await getSupabase()
           .from('leave_types')
           .update({
             name: ltForm.name,
@@ -216,7 +216,7 @@ export default function SettingsPage() {
         await logAction(profile.id, 'update', 'leave_type', editingLt.id, { name: ltForm.name });
         toast.success('Leave type updated');
       } else {
-        const { error } = await supabase.from('leave_types').insert({
+        const { error } = await getSupabase().from('leave_types').insert({
           name: ltForm.name,
           description: ltForm.description || null,
           days_allowed: ltForm.days_allowed,
@@ -238,7 +238,7 @@ export default function SettingsPage() {
   async function handleDeleteLt(lt: LeaveType) {
     if (!confirm(`Delete ${lt.name}? This affects all leave balances.`)) return;
     try {
-      const { error } = await supabase.from('leave_types').delete().eq('id', lt.id);
+      const { error } = await getSupabase().from('leave_types').delete().eq('id', lt.id);
       if (error) throw error;
       toast.success('Leave type deleted');
       loadLeaveTypes();

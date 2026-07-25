@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Check, ChevronsUpDown, Plus, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -36,7 +36,7 @@ export function CreatableSelect({
 
   const fetchOptions = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from(table)
       .select('name')
       .order('name');
@@ -67,7 +67,7 @@ export function CreatableSelect({
     if (!trimmed || creating) return;
     setCreating(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from(table)
         .insert({ name: trimmed })
         .select('name')

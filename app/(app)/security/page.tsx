@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, AuditLog } from '@/lib/supabase';
+import { getSupabase, AuditLog } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,7 @@ export default function SecurityPage() {
 
   useEffect(() => {
     async function loadLogs() {
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from('audit_logs')
         .select('*, profiles(*)')
         .order('created_at', { ascending: false })

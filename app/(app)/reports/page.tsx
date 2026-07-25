@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { supabase, Profile, AttendanceRecord, LeaveRequest } from '@/lib/supabase';
+import { getSupabase, Profile, AttendanceRecord, LeaveRequest } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,7 +73,7 @@ export default function ReportsPage() {
     try {
       const teamIds = employees.map((emp) => emp.id);
       const { start, end } = attendanceDateRange(range);
-      const { data: records, error } = await supabase
+      const { data: records, error } = await getSupabase()
         .from('attendance_records')
         .select('*')
         .in('employee_id', teamIds)
@@ -107,7 +107,7 @@ export default function ReportsPage() {
     setExporting(true);
     try {
       const teamIds = employees.map((emp) => emp.id);
-      const { data: leaves, error } = await supabase
+      const { data: leaves, error } = await getSupabase()
         .from('leave_requests')
         .select('*, leave_types(*)')
         .in('employee_id', teamIds)
@@ -142,7 +142,7 @@ export default function ReportsPage() {
 
       let teamIds: string[] = [];
       if (isManager) {
-        const { data: team } = await supabase
+        const { data: team } = await getSupabase()
           .from('profiles')
           .select('*')
           .eq('manager_id', profile.id)
@@ -150,7 +150,7 @@ export default function ReportsPage() {
         setEmployees(team ?? []);
         teamIds = (team ?? []).map((t) => t.id);
       } else if (isHr) {
-        const { data: all } = await supabase
+        const { data: all } = await getSupabase()
           .from('profiles')
           .select('*')
           .eq('is_active', true)
@@ -166,7 +166,7 @@ export default function ReportsPage() {
       const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const endDate = now.toISOString().split('T')[0];
 
-      const { data: atts } = await supabase
+      const { data: atts } = await getSupabase()
         .from('attendance_records')
         .select('*')
         .in('employee_id', teamIds)
@@ -189,7 +189,7 @@ export default function ReportsPage() {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const ms = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
         const me = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
-        const { data: mAtts } = await supabase
+        const { data: mAtts } = await getSupabase()
           .from('attendance_records')
           .select('*')
           .in('employee_id', teamIds)
@@ -202,7 +202,7 @@ export default function ReportsPage() {
       setMonthlyData(months);
 
       // Leave stats
-      const { data: leaves } = await supabase
+      const { data: leaves } = await getSupabase()
         .from('leave_requests')
         .select('*')
         .in('employee_id', teamIds);

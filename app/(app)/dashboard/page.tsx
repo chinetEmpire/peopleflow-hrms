@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { formatDuration, attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
-import { supabase, AttendanceRecord, LeaveRequest, LeaveBalance, Profile } from '@/lib/supabase';
+import { getSupabase, AttendanceRecord, LeaveRequest, LeaveBalance, Profile } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ export default function DashboardPage() {
     if (!shouldAutoCheckout(record.check_in, record.check_out)) return record;
 
     const checkoutAt = getAutoCheckoutTime(record.check_in);
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .update({ check_out: checkoutAt, status: 'absent' })
       .eq('id', record.id)
@@ -64,7 +64,7 @@ export default function DashboardPage() {
     const today = new Date().toISOString().split('T')[0];
 
     // Today's attendance
-    const { data: att } = await supabase
+    const { data: att } = await getSupabase()
       .from('attendance_records')
       .select('*')
       .eq('employee_id', profile.id)
@@ -73,7 +73,7 @@ export default function DashboardPage() {
     setTodayRecord(await reconcileAttendanceRecord(att));
 
     // My leave requests
-    const { data: leaves, error: leavesError } = await supabase
+    const { data: leaves, error: leavesError } = await getSupabase()
       .from('leave_requests')
       .select('id, employee_id, leave_type_id, start_date, end_date, days_requested, reason, status, approved_by, approved_at, rejection_reason, created_at, leave_types(name, color)')
       .eq('employee_id', profile.id)
@@ -87,7 +87,7 @@ export default function DashboardPage() {
     }
 
     // My leave balances
-    const { data: bals } = await supabase
+    const { data: bals } = await getSupabase()
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', profile.id)
@@ -95,9 +95,9 @@ export default function DashboardPage() {
     setBalances(bals ?? []);
 
     if (isHr) {
-      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true);
-      const { count: present } = await supabase.from('attendance_records').select('*', { count: 'exact', head: true }).eq('date', today).not('check_in', 'is', null);
-      const { count: pending } = await supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      const { count } = await getSupabase().from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      const { count: present } = await getSupabase().from('attendance_records').select('*', { count: 'exact', head: true }).eq('date', today).not('check_in', 'is', null);
+      const { count: pending } = await getSupabase().from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
       setStats({
         totalEmployees: count ?? 0,
         presentToday: present ?? 0,
@@ -107,7 +107,7 @@ export default function DashboardPage() {
     }
 
     const month = new Date().getMonth() + 1;
-    const { data: birthdayRows } = await supabase
+    const { data: birthdayRows } = await getSupabase()
       .from('profiles')
       .select('*')
       .eq('is_active', true)
@@ -127,7 +127,7 @@ export default function DashboardPage() {
     );
 
     if (isManager) {
-      const { data: team } = await supabase
+      const { data: team } = await getSupabase()
         .from('profiles')
         .select('*')
         .eq('manager_id', profile.id)
@@ -178,7 +178,7 @@ export default function DashboardPage() {
     const now = new Date().toISOString();
     const today = new Date().toISOString().split('T')[0];
 
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .upsert({
         employee_id: profile.id,
@@ -206,7 +206,7 @@ export default function DashboardPage() {
 
     const now = new Date().toISOString();
     const status = attendanceStatusFromDuration(todayRecord.check_in, now);
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('attendance_records')
       .update({
         check_out: now,
