@@ -506,7 +506,7 @@ export default function AddEmployeePage() {
 
       {/* ── Work Experience Dialog ────────────────────────────────── */}
       <Dialog open={expDialog.open} onOpenChange={(o) => !o && setExpDialog({ open: false, data: emptyExp, index: null })}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{expDialog.index !== null ? 'Edit' : 'Add'} Work Experience</DialogTitle>
           </DialogHeader>
@@ -537,7 +537,7 @@ export default function AddEmployeePage() {
 
       {/* ── Education Dialog ──────────────────────────────────────── */}
       <Dialog open={eduDialog.open} onOpenChange={(o) => !o && setEduDialog({ open: false, data: emptyEdu, index: null })}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{eduDialog.index !== null ? 'Edit' : 'Add'} Education</DialogTitle>
           </DialogHeader>
@@ -560,7 +560,7 @@ export default function AddEmployeePage() {
 
       {/* ── Dependent Dialog ──────────────────────────────────────── */}
       <Dialog open={depDialog.open} onOpenChange={(o) => !o && setDepDialog({ open: false, data: emptyDep, index: null })}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{depDialog.index !== null ? 'Edit' : 'Add'} Dependent</DialogTitle>
           </DialogHeader>

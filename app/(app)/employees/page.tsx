@@ -267,60 +267,62 @@ export default function EmployeesPage() {
         </Card>
       ) : viewMode === 'table' && isHr ? (
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
-          <TableComponent>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Employee ID</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Job Title</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((emp) => (
-                <TableRow key={emp.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white overflow-hidden shrink-0">
-                        {emp.avatar_url ? (
-                          <img src={emp.avatar_url} alt={`${emp.first_name} ${emp.last_name}`} className="h-full w-full object-cover" />
-                        ) : (
-                          <span>{emp.first_name[0]}{emp.last_name[0]}</span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-[#051536]">{emp.first_name} {emp.last_name}</p>
-                        {emp.nick_name && <p className="text-xs text-muted-foreground">({emp.nick_name})</p>}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{emp.employee_id ?? '—'}</TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5" />
-                      <span className="truncate max-w-[200px]">{emp.email}</span>
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{emp.phone ?? '—'}</TableCell>
-                  <TableCell>{roleBadge(emp.role)}</TableCell>
-                  <TableCell className="text-muted-foreground">{emp.job_title ?? '—'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(emp)} className="h-8 w-8 p-0">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(emp)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <TableComponent className="min-w-[700px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Employee ID</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Job Title</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </TableComponent>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((emp) => (
+                  <TableRow key={emp.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#032364] text-xs font-semibold text-white overflow-hidden shrink-0">
+                          {emp.avatar_url ? (
+                            <img src={emp.avatar_url} alt={`${emp.first_name} ${emp.last_name}`} className="h-full w-full object-cover" />
+                          ) : (
+                            <span>{emp.first_name[0]}{emp.last_name[0]}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-[#051536]">{emp.first_name} {emp.last_name}</p>
+                          {emp.nick_name && <p className="text-xs text-muted-foreground">({emp.nick_name})</p>}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{emp.employee_id ?? '—'}</TableCell>
+                    <TableCell>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span className="truncate max-w-[200px]">{emp.email}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{emp.phone ?? '—'}</TableCell>
+                    <TableCell>{roleBadge(emp.role)}</TableCell>
+                    <TableCell className="text-muted-foreground">{emp.job_title ?? '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(emp)} className="h-8 w-8 p-0">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(emp)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </TableComponent>
+          </div>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -379,7 +381,7 @@ export default function EmployeesPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
             <DialogDescription>

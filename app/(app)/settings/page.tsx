@@ -426,7 +426,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile">
-        <TabsList className="bg-white rounded-lg border border-border/50">
+        <TabsList className="bg-white rounded-lg border border-border/50 flex overflow-x-auto">
           <TabsTrigger value="profile">My Profile</TabsTrigger>
           {isHr && <TabsTrigger value="leave-types">Leave Types</TabsTrigger>}
           {isHr && <TabsTrigger value="leave-balances">Leave Customization</TabsTrigger>}
@@ -444,7 +444,7 @@ export default function SettingsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <div className="relative">
                   <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#032364] text-2xl font-semibold text-white overflow-hidden">
                     {avatarPreview ? (
@@ -808,7 +808,7 @@ export default function SettingsPage() {
 
           {/* Save Button */}
           <div className="flex justify-end">
-            <Button onClick={handleSaveProfile} disabled={savingProfile} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90 px-8">
+            <Button onClick={handleSaveProfile} disabled={savingProfile} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90 w-full sm:w-auto px-8">
               {savingProfile ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
@@ -873,7 +873,7 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label>Staff Member</Label>
                       <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                        <SelectTrigger className="w-[260px] rounded-lg">
+                        <SelectTrigger className="w-full sm:w-[260px] rounded-lg">
                           <SelectValue placeholder="Select staff" />
                         </SelectTrigger>
                         <SelectContent>
@@ -952,7 +952,7 @@ export default function SettingsPage() {
                       );
                     })}
                     <div className="flex justify-end">
-                      <Button onClick={handleSaveBalances} disabled={savingBalances || !selectedEmployeeId} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90">
+                      <Button onClick={handleSaveBalances} disabled={savingBalances || !selectedEmployeeId} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90 w-full sm:w-auto">
                         {savingBalances ? 'Saving...' : 'Save Balances'}
                       </Button>
                     </div>
@@ -966,7 +966,7 @@ export default function SettingsPage() {
 
       {/* Leave Type Dialog */}
       <Dialog open={ltDialog} onOpenChange={setLtDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{editingLt ? 'Edit Leave Type' : 'Add Leave Type'}</DialogTitle>
             <DialogDescription>Configure leave category and rules</DialogDescription>
@@ -1005,7 +1005,7 @@ export default function SettingsPage() {
 
       {/* Work Experience Dialog */}
       <Dialog open={expDialog.open} onOpenChange={(o) => !o && setExpDialog({ open: false, data: emptyExp, index: null })}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{expDialog.index !== null ? 'Edit' : 'Add'} Work Experience</DialogTitle>
           </DialogHeader>
@@ -1046,7 +1046,7 @@ export default function SettingsPage() {
 
       {/* Education Dialog */}
       <Dialog open={eduDialog.open} onOpenChange={(o) => !o && setEduDialog({ open: false, data: emptyEdu, index: null })}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{eduDialog.index !== null ? 'Edit' : 'Add'} Education</DialogTitle>
           </DialogHeader>
@@ -1079,7 +1079,7 @@ export default function SettingsPage() {
 
       {/* Dependent Dialog */}
       <Dialog open={depDialog.open} onOpenChange={(o) => !o && setDepDialog({ open: false, data: emptyDep, index: null })}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>{depDialog.index !== null ? 'Edit' : 'Add'} Dependent</DialogTitle>
           </DialogHeader>

@@ -357,7 +357,7 @@ export default function ReportsPage() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeReport} onValueChange={(value) => setActiveReport(value as 'daily' | 'weekly' | 'monthly' | 'leave')}>
-            <TabsList className="bg-white rounded-lg border border-border/50">
+            <TabsList className="bg-white rounded-lg border border-border/50 flex overflow-x-auto">
               <TabsTrigger value="daily">Daily</TabsTrigger>
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
               <TabsTrigger value="monthly">Monthly</TabsTrigger>

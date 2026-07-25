@@ -271,10 +271,10 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">
                     {todayRecord?.check_out ? 'Total Time Worked' : 'Time Worked Today'}
                   </p>
-                  <p className="text-5xl font-mono font-bold text-[#032364] tabular-nums">{liveDuration}</p>
+                  <p className="text-3xl sm:text-5xl font-mono font-bold text-[#032364] tabular-nums">{liveDuration}</p>
                 </div>
               )}
-              <div className="flex gap-3">
+              <div className="flex w-full gap-3 sm:w-auto">
                 <Button
                   onClick={handleCheckIn}
                   disabled={clockLoading || !!todayRecord?.check_in}

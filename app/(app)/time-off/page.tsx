@@ -301,7 +301,7 @@ export default function TimeOffPage() {
 
       <Tabs defaultValue={isHr ? 'approvals' : 'mine'}>
         {isHr && (
-          <TabsList className="bg-white rounded-lg border border-border/50">
+          <TabsList className="bg-white rounded-lg border border-border/50 flex overflow-x-auto">
             <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
             <TabsTrigger value="mine">My Requests</TabsTrigger>
           </TabsList>
@@ -387,7 +387,7 @@ export default function TimeOffPage() {
 
       {/* Request Leave Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100vw-2rem)]">
           <DialogHeader>
             <DialogTitle>Request Leave</DialogTitle>
             <DialogDescription>Submit a new leave application</DialogDescription>
