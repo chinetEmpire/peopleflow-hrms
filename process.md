@@ -21,6 +21,9 @@ Sprint Goal: Deliver a stable HR foundation.
 | Leave management | Done | Leave types, balances, approval workflow, audit logging |
 | Reports module | Done | Real data aggregation, CSV/XLS export |
 | Super admin role parity | Done | Super admin now has full access to all HR admin modules |
+| Notifications system | Done | Bell, real-time, attendance reminders, leave alerts |
+| Mobile responsiveness | Done | Viewport meta, scrollable tabs, responsive dialogs |
+| Location address names | Done | Reverse geocoding, human-readable addresses |
 
 ---
 
@@ -48,6 +51,7 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] My team view (manager role)
 - [x] Auto-reconciliation for open attendance records
 - [x] Super admin sees all HR admin dashboard features
+- [x] Location address display (human-readable, not coordinates)
 - [ ] "On Leave Today" stat (currently hardcoded to 0)
 
 ## Employees
@@ -55,12 +59,14 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] Employee list with search filtering
 - [x] Employee cards with avatar, name, ID, role, contact info
 - [x] Create employee (multi-section form with experience, education, dependents)
-- [x] Edit employee via dialog
+- [x] Edit employee via dedicated form page (`/employees/new?id=`)
 - [x] Delete employee with confirmation
 - [x] Department selection and inline creation
 - [x] Audit logging on create/update/delete
 - [x] Backend creates real Supabase auth users
 - [x] Role-based access (hr_admin, super_admin)
+- [x] Card/table view toggle (HR/super_admin only)
+- [x] Profile picture display on cards and table
 
 ## Attendance
 
@@ -71,8 +77,9 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] Team attendance view (manager/HR/super_admin)
 - [x] Monthly history with date navigation
 - [x] Auto-reconciliation for stale records
-- [x] Location display on UI
+- [x] Location display on UI (human-readable addresses via OpenStreetMap)
 - [x] Unique constraint per employee per day
+- [x] Reverse geocoding for check-in/out locations
 
 ## Time Off / Leave
 
@@ -84,6 +91,7 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] Approve request (updates balance, logs action)
 - [x] Reject request with reason (reverts balance, logs action)
 - [x] RLS policies for employee-level data access
+- [x] Auto-notification on leave approval/rejection (database trigger)
 
 ## Reports
 
@@ -94,6 +102,7 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] CSV export for attendance and leave
 - [x] XLS export for attendance and leave
 - [x] Role-scoped data (manager sees team, HR/super_admin sees all)
+- [x] Location address columns in export
 
 ## Settings
 
@@ -102,6 +111,9 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] Leave balance customization per employee per year
 - [x] Action logging on leave type changes
 - [x] Super admin has full settings access including leave types and balances
+- [x] Profile picture upload with 5MB limit
+- [x] Work Experience, Education, Dependent details sections
+- [x] Full profile form visible to all users (restricted fields for employees/managers)
 
 ## Security
 
@@ -110,6 +122,33 @@ Sprint Goal: Deliver a stable HR foundation.
 - [x] Search/filter by action, entity, actor, email
 - [x] Immutable log table (no update/delete via RLS)
 - [x] Super admin role restriction
+
+## Notifications
+
+- [x] `notifications` table with RLS (users read/update own only)
+- [x] Bell icon with red unread count badge in header
+- [x] Dropdown notification panel with scrollable list
+- [x] Mark individual notifications as read (click)
+- [x] Mark all as read button
+- [x] Delete notifications
+- [x] Supabase Realtime subscription for live updates
+- [x] Browser Notification API for native push
+- [x] Synthesized chime sound on new notifications
+- [x] Check-in reminder at 8:30 AM (only if not checked in)
+- [x] Check-out reminder at 5:00 PM (only if checked in but not out)
+- [x] Leave approval/rejection auto-notifications (database trigger)
+- [x] Conditional reminders via localStorage deduplication
+- [x] Permission request on first user interaction
+
+## Mobile Responsiveness
+
+- [x] Viewport meta tag with `userScalable: false`
+- [x] Employees table in `overflow-x-auto` with min-width
+- [x] All dialogs responsive (`w-[calc(100vw-2rem)]`)
+- [x] Scrollable tab lists on mobile
+- [x] Timer text scaled (`text-3xl sm:text-5xl`)
+- [x] Buttons full-width on mobile (`w-full sm:w-auto`)
+- [x] Settings sections stack vertically on mobile
 
 ---
 
@@ -121,6 +160,8 @@ Sprint Goal: Deliver a stable HR foundation.
 - `CreatableSelect` component was added to work around PostgREST schema cache issue
 - Business logic could be further extracted from page components into service helpers
 - Error handling and loading states could be improved across modules
+- pg_cron not yet enabled for server-side attendance reminders (client-side fallback active)
+- Browser notification permission must be granted manually (first click triggers request)
 
 ---
 
@@ -161,7 +202,7 @@ Sprint Goal: Deliver a stable HR foundation.
 - Added departments edge function
 - Added `CreatableSelect` component for department selection
 
-## 2026-07-25
+## 2026-07-25 (Morning)
 
 - Created process.md to track development progress
 - Extended super admin role to have full access to all HR admin modules
@@ -169,6 +210,42 @@ Sprint Goal: Deliver a stable HR foundation.
 - Updated page-level role checks in attendance, time-off, reports, dashboard, settings
 - Cleaned up redundant `isSuperAdmin` checks in dashboard
 - Audit log (Security) remains super_admin-only as intended
+
+## 2026-07-25 (Afternoon — Location & Employees)
+
+- Added reverse geocoding utility (`lib/geocode.ts`) using Nominatim/OpenStreetMap API
+- Created migration `20260725100000_add_attendance_location_names.sql` adding `check_in_location` and `check_out_location` text columns
+- Updated `AttendanceRecord` type with location name fields
+- Updated dashboard and attendance check-in/check-out handlers to fetch and store human-readable addresses
+- Updated UI to display location names instead of raw coordinates
+- Updated reports CSV/XLS export to include Check-in/Check-out Location columns
+- Fixed employees/new page — now accepts `?id=` query param for edit mode with full form pre-filled
+- Edit button on employees page navigates to `/employees/new?id=` instead of opening inline dialog
+- Fixed Suspense boundary issue for `useSearchParams` in employees/new page
+- Added viewport meta tag with `maximumScale: 1, userScalable: false` for mobile
+- Added `overflow-x: hidden` to html/body in globals.css
+- Made all dialogs responsive with `w-[calc(100vw-2rem)]`
+- Added scrollable tabs on mobile for time-off and attendance pages
+- Scaled timer text for mobile (`text-3xl sm:text-5xl`)
+- Made buttons full-width on mobile for time-off and settings pages
+- Stacked settings profile picture section vertically on mobile
+- Made settings employee selector responsive (`w-full sm:w-[260px]`)
+
+## 2026-07-25 (Evening — Notifications System)
+
+- Created `notifications` table with RLS, indexes, and `create_notification()` RPC function
+- Created database trigger `trg_leave_status_change` for automatic leave approval/rejection notifications
+- Added `NotificationRecord` and `NotificationType` types to `lib/supabase.ts`
+- Created `lib/notifications.ts` — CRUD service (create, fetch, mark read, mark all read, delete)
+- Created `lib/push-notifications.ts` — Browser Notification API + synthesized chime sound
+- Created `hooks/use-notifications.ts` — Supabase Realtime subscription with live updates
+- Created `hooks/use-attendance-reminders.ts` — Client-side 8:30 AM / 5:00 PM reminders with localStorage deduplication
+- Created `components/notifications/notification-bell.tsx` — Bell icon with red unread count badge
+- Created `components/notifications/notification-dropdown.tsx` — Scrollable notification list with mark all as read
+- Integrated notification bell into app header (`app/(app)/layout.tsx`)
+- Wired attendance reminders hook into layout
+- Pushed migration `20260725200000_create_notifications.sql` to Supabase
+- All changes committed and pushed
 
 ---
 
