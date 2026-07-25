@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Children } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getSupabase, Profile, Role } from '@/lib/supabase';
 import { callManageEmployee } from '@/lib/manage-employee';
@@ -130,12 +130,17 @@ const emptyDep: Dependent = { name: '', relationship: '', date_of_birth: '', gen
 
 export default function AddEmployeePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('id');
+  const isEditMode = !!editId;
+
   const { profile } = useAuth();
   const isAdmin = profile && ADMIN_ROLES.includes(profile.role as Role);
 
   const [managers, setManagers] = useState<Profile[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [loadingEmployee, setLoadingEmployee] = useState(false);
 
   // Dynamic lists
   const [experiences, setExperiences] = useState<WorkExperience[]>([]);
@@ -155,6 +160,54 @@ export default function AddEmployeePage() {
       .eq('is_active', true)
       .then(({ data }) => setManagers((data as Profile[]) ?? []));
   }, []);
+
+  useEffect(() => {
+    if (!editId) return;
+    setLoadingEmployee(true);
+    getSupabase()
+      .from('profiles')
+      .select('*')
+      .eq('id', editId)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) {
+          toast.error('Employee not found');
+          router.push('/employees');
+          return;
+        }
+        setForm({
+          employee_id: data.employee_id ?? '',
+          first_name: data.first_name,
+          last_name: data.last_name,
+          nick_name: data.nick_name ?? '',
+          email: data.email,
+          phone: data.phone ?? '',
+          gender: data.gender ?? '',
+          date_of_birth: data.date_of_birth ?? '',
+          marital_status: data.marital_status ?? '',
+          nationality: data.nationality ?? '',
+          home_address: data.home_address ?? '',
+          emergency_contact_name: data.emergency_contact_name ?? '',
+          emergency_contact_phone: data.emergency_contact_phone ?? '',
+          job_title: data.job_title ?? '',
+          department: data.department ?? '',
+          hire_date: data.hire_date ?? '',
+          employment_type: data.employment_type ?? 'full_time',
+          employment_status: data.employment_status ?? 'active',
+          role: (data.role as Role) ?? 'employee',
+          manager_id: data.manager_id ?? '',
+          bank_name: data.bank_name ?? '',
+          bank_account_number: data.bank_account_number ?? '',
+          password: '',
+        });
+        setExperiences((data.work_experience as unknown as WorkExperience[]) ?? []);
+        setEducations((data.education_details as unknown as Education[]) ?? []);
+        setDependents((data.dependents as unknown as Dependent[]) ?? []);
+        setLoadingEmployee(false);
+      }, () => {
+        setLoadingEmployee(false);
+      });
+  }, [editId, router]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -205,48 +258,92 @@ export default function AddEmployeePage() {
       toast.error('First name, last name and email are required');
       return;
     }
-    if (isAdmin && !form.password) {
+    if (!isEditMode && isAdmin && !form.password) {
       toast.error('Please set a temporary password');
       return;
     }
 
     setSaving(true);
     try {
-      await callManageEmployee('create', {
-        email: form.email,
-        password: form.password || undefined,
-        first_name: form.first_name,
-        last_name: form.last_name,
-        nick_name: form.nick_name || null,
-        role: form.role,
-        employee_id: form.employee_id || null,
-        phone: form.phone || null,
-        gender: form.gender || null,
-        date_of_birth: form.date_of_birth || null,
-        marital_status: form.marital_status || null,
-        nationality: form.nationality || null,
-        home_address: form.home_address || null,
-        emergency_contact_name: form.emergency_contact_name || null,
-        emergency_contact_phone: form.emergency_contact_phone || null,
-        job_title: form.job_title || null,
-        department: form.department || null,
-        hire_date: form.hire_date || null,
-        employment_type: form.employment_type || null,
-        employment_status: form.employment_status || null,
-        manager_id: form.manager_id || null,
-        bank_name: form.bank_name || null,
-        bank_account_number: form.bank_account_number || null,
-        work_experience: experiences,
-        education_details: educations,
-        dependents,
-      });
-      toast.success('Employee created successfully');
+      if (isEditMode) {
+        const updates: Record<string, unknown> = {
+          id: editId,
+          first_name: form.first_name,
+          last_name: form.last_name,
+          nick_name: form.nick_name || null,
+          email: form.email,
+          role: form.role,
+          employee_id: form.employee_id || null,
+          phone: form.phone || null,
+          gender: form.gender || null,
+          date_of_birth: form.date_of_birth || null,
+          marital_status: form.marital_status || null,
+          nationality: form.nationality || null,
+          home_address: form.home_address || null,
+          emergency_contact_name: form.emergency_contact_name || null,
+          emergency_contact_phone: form.emergency_contact_phone || null,
+          job_title: form.job_title || null,
+          department: form.department || null,
+          hire_date: form.hire_date || null,
+          employment_type: form.employment_type || null,
+          employment_status: form.employment_status || null,
+          manager_id: form.manager_id || null,
+          bank_name: form.bank_name || null,
+          bank_account_number: form.bank_account_number || null,
+          work_experience: experiences,
+          education_details: educations,
+          dependents,
+        };
+        if (isAdmin && form.password) {
+          updates.password = form.password;
+        }
+        await callManageEmployee('update', updates);
+        toast.success('Employee updated successfully');
+      } else {
+        await callManageEmployee('create', {
+          email: form.email,
+          password: form.password || undefined,
+          first_name: form.first_name,
+          last_name: form.last_name,
+          nick_name: form.nick_name || null,
+          role: form.role,
+          employee_id: form.employee_id || null,
+          phone: form.phone || null,
+          gender: form.gender || null,
+          date_of_birth: form.date_of_birth || null,
+          marital_status: form.marital_status || null,
+          nationality: form.nationality || null,
+          home_address: form.home_address || null,
+          emergency_contact_name: form.emergency_contact_name || null,
+          emergency_contact_phone: form.emergency_contact_phone || null,
+          job_title: form.job_title || null,
+          department: form.department || null,
+          hire_date: form.hire_date || null,
+          employment_type: form.employment_type || null,
+          employment_status: form.employment_status || null,
+          manager_id: form.manager_id || null,
+          bank_name: form.bank_name || null,
+          bank_account_number: form.bank_account_number || null,
+          work_experience: experiences,
+          education_details: educations,
+          dependents,
+        });
+        toast.success('Employee created successfully');
+      }
       router.push('/employees');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create employee');
+      toast.error(err instanceof Error ? err.message : 'Failed to save employee');
     } finally {
       setSaving(false);
     }
+  }
+
+  if (loadingEmployee) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0e3a94]" />
+      </div>
+    );
   }
 
   return (
@@ -257,9 +354,9 @@ export default function AddEmployeePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0">
-          <h1 className="text-lg md:text-xl font-bold text-[#051536] truncate">Add New Employee</h1>
+          <h1 className="text-lg md:text-xl font-bold text-[#051536] truncate">{isEditMode ? 'Edit Employee' : 'Add New Employee'}</h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-0.5 hidden sm:block">
-            Fill in the employee&apos;s information below to create their account
+            {isEditMode ? 'Update the employee\'s information below' : 'Fill in the employee&apos;s information below to create their account'}
           </p>
         </div>
       </div>
@@ -473,16 +570,18 @@ export default function AddEmployeePage() {
           <SectionCard icon={ShieldCheck} title="Account Setup">
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               <Field
-                label="Temporary Password"
-                required
+                label={isEditMode ? 'New Password (leave blank to keep current)' : 'Temporary Password'}
+                required={!isEditMode}
                 type="password"
                 value={form.password}
                 onChange={(v) => update('password', v)}
-                placeholder="Set a password for the employee"
+                placeholder={isEditMode ? 'Enter new password' : 'Set a password for the employee'}
               />
               <div className="flex items-end">
                 <p className="text-xs text-muted-foreground">
-                  The employee will use this password to sign in for the first time. They can change it later from their settings.
+                  {isEditMode
+                    ? 'Leave blank to keep the current password. The employee can change it from their settings.'
+                    : 'The employee will use this password to sign in for the first time. They can change it later from their settings.'}
                 </p>
               </div>
             </div>
@@ -496,9 +595,9 @@ export default function AddEmployeePage() {
           </Button>
           <Button type="submit" disabled={saving} className="rounded-lg bg-[#032364] px-6 hover:bg-[#032364]/90">
             {saving ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isEditMode ? 'Updating...' : 'Creating...'}</>
             ) : (
-              <><Save className="mr-2 h-4 w-4" />Create Employee</>
+              <><Save className="mr-2 h-4 w-4" />{isEditMode ? 'Update Employee' : 'Create Employee'}</>
             )}
           </Button>
         </div>

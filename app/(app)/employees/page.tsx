@@ -44,7 +44,6 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Profile | null>(null);
   const [form, setForm] = useState({
     employee_id: '',
     first_name: '',
@@ -80,7 +79,6 @@ export default function EmployeesPage() {
   }, []);
 
   function openAdd() {
-    setEditing(null);
     setForm({
       employee_id: '',
       first_name: '',
@@ -97,61 +95,25 @@ export default function EmployeesPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(emp: Profile) {
-    setEditing(emp);
-    setForm({
-      employee_id: emp.employee_id ?? '',
-      first_name: emp.first_name,
-      last_name: emp.last_name,
-      nick_name: emp.nick_name ?? '',
-      email: emp.email,
-      role: emp.role,
-      job_title: emp.job_title ?? '',
-      phone: emp.phone ?? '',
-      hire_date: emp.hire_date ?? '',
-      manager_id: emp.manager_id ?? '',
-      password: '',
-    });
-    setDialogOpen(true);
-  }
-
   async function handleSave() {
     if (!profile) return;
     setSaving(true);
 
     try {
-      if (editing) {
-        await callManageEmployee('update', {
-          id: editing.id,
-          employee_id: form.employee_id || null,
-          first_name: form.first_name,
-          last_name: form.last_name,
-          nick_name: form.nick_name || null,
-          email: form.email,
-          role: form.role,
-          job_title: form.job_title || null,
-          phone: form.phone || null,
-          hire_date: form.hire_date || null,
-          manager_id: form.manager_id || null,
-          password: form.password || undefined,
-        });
-        toast.success('Employee updated successfully');
-      } else {
-        await callManageEmployee('create', {
-          email: form.email,
-          password: form.password,
-          first_name: form.first_name,
-          last_name: form.last_name,
-          nick_name: form.nick_name || null,
-          role: form.role,
-          employee_id: form.employee_id || null,
-          job_title: form.job_title || null,
-          phone: form.phone || null,
-          hire_date: form.hire_date || null,
-          manager_id: form.manager_id || null,
-        });
-        toast.success('Employee added successfully');
-      }
+      await callManageEmployee('create', {
+        email: form.email,
+        password: form.password,
+        first_name: form.first_name,
+        last_name: form.last_name,
+        nick_name: form.nick_name || null,
+        role: form.role,
+        employee_id: form.employee_id || null,
+        job_title: form.job_title || null,
+        phone: form.phone || null,
+        hire_date: form.hire_date || null,
+        manager_id: form.manager_id || null,
+      });
+      toast.success('Employee added successfully');
 
       setDialogOpen(false);
       loadEmployees();
@@ -309,10 +271,10 @@ export default function EmployeesPage() {
                     <TableCell>{roleBadge(emp.role)}</TableCell>
                     <TableCell className="text-muted-foreground">{emp.job_title ?? '—'}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(emp)} className="h-8 w-8 p-0">
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => router.push(`/employees/new?id=${emp.id}`)} className="h-8 w-8 p-0">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                         <Button size="sm" variant="ghost" onClick={() => handleDelete(emp)} className="h-8 w-8 p-0 text-destructive hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -364,7 +326,7 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => openEdit(emp)} className="rounded-lg">
+                  <Button size="sm" variant="outline" onClick={() => router.push(`/employees/new?id=${emp.id}`)} className="rounded-lg">
                     <Pencil className="mr-1 h-3.5 w-3.5" />
                     Edit
                   </Button>
@@ -383,9 +345,9 @@ export default function EmployeesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)]">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
+            <DialogTitle>Add New Employee</DialogTitle>
             <DialogDescription>
-              {editing ? 'Update employee information' : 'Create a new employee account'}
+              Create a new employee account
             </DialogDescription>
           </DialogHeader>
 
@@ -443,11 +405,11 @@ export default function EmployeesPage() {
                 </div>
 
                 <FormField
-                  label={editing ? 'New Password (optional)' : 'Password'}
+                  label="Password"
                   value={form.password}
                   onChange={(v) => setForm({ ...form, password: v })}
                   type="password"
-                  required={!editing}
+                  required
                 />
               </div>
             </div>
@@ -458,7 +420,7 @@ export default function EmployeesPage() {
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90">
-              {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
+              {saving ? 'Saving...' : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>
