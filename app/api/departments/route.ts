@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+let _pool: Pool | null = null;
+function getPool() {
+  if (!_pool) {
+    _pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+  }
+  return _pool;
+}
 
 export async function GET() {
   try {
-    const result = await pool.query('SELECT name FROM departments ORDER BY name');
+    const result = await getPool().query('SELECT name FROM departments ORDER BY name');
     return NextResponse.json({ departments: result.rows.map((r) => r.name) });
   } catch (err) {
     return NextResponse.json(
@@ -26,12 +32,12 @@ export async function POST(req: Request) {
     }
 
     const trimmed = name.trim();
-    const existing = await pool.query('SELECT name FROM departments WHERE name = $1', [trimmed]);
+    const existing = await getPool().query('SELECT name FROM departments WHERE name = $1', [trimmed]);
     if (existing.rows.length > 0) {
       return NextResponse.json({ name: existing.rows[0].name });
     }
 
-    const inserted = await pool.query(
+    const inserted = await getPool().query(
       'INSERT INTO departments (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = $1 RETURNING name',
       [trimmed],
     );
