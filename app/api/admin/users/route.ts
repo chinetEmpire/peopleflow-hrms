@@ -99,9 +99,20 @@ export async function PATCH(req: Request) {
 
     if (error) throw error;
 
+    // Look up the target user's org_id for the audit log
+    const { data: targetProfile } = await supabase
+      .from('profiles')
+      .select('org_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!targetProfile?.org_id) {
+      return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
+    }
+
     await supabase.from('audit_logs').insert({
       actor_id: user.id,
-      org_id: '',
+      org_id: targetProfile.org_id,
       action: 'update',
       entity: 'user',
       entity_id: id,

@@ -175,6 +175,17 @@ export async function POST(req: Request) {
       const { id } = body;
       if (!id) return NextResponse.json({ error: 'Missing employee id' }, { status: 400 });
 
+      // Verify the target user belongs to the same org
+      const { data: targetProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('org_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!targetProfile || targetProfile.org_id !== orgId) {
+        return NextResponse.json({ error: 'Employee not found in your organization' }, { status: 404 });
+      }
+
       const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(id);
       if (delErr) throw delErr;
 

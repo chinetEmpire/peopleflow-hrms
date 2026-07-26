@@ -6,9 +6,14 @@ import { useAuth } from '@/lib/auth-context';
 import { useTenant } from '@/lib/tenant-context';
 import { LandingNavbar } from '@/components/landing/navbar';
 import { HeroSection } from '@/components/landing/hero';
+import { TrustSection } from '@/components/landing/trust';
+import { ProblemSection } from '@/components/landing/problem';
 import { FeaturesSection } from '@/components/landing/features';
+import { WhyChooseUsSection } from '@/components/landing/why-choose-us';
 import { HowItWorksSection } from '@/components/landing/how-it-works';
+import { TestimonialsSection } from '@/components/landing/testimonials';
 import { PricingSection } from '@/components/landing/pricing';
+import { FAQSection } from '@/components/landing/faq';
 import { CTASection } from '@/components/landing/cta';
 import { LandingFooter } from '@/components/landing/footer';
 import { Loader2 } from 'lucide-react';
@@ -22,7 +27,6 @@ export default function Home() {
   useEffect(() => {
     if (loading) return;
 
-    // On a subdomain (org portal): require auth
     if (organization) {
       if (user && profile) {
         router.replace('/dashboard');
@@ -32,13 +36,11 @@ export default function Home() {
       return;
     }
 
-    // On root domain (no org): redirect logged-in users to dashboard
     if (user && profile) {
       router.replace('/dashboard');
     }
   }, [user, profile, organization, loading, router]);
 
-  // Show landing page while loading or when user is not logged in
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f2e9e9]">
@@ -47,7 +49,6 @@ export default function Home() {
     );
   }
 
-  // If logged in with org, don't show landing (will redirect)
   if (organization && user && profile) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f2e9e9]">
@@ -56,15 +57,19 @@ export default function Home() {
     );
   }
 
-  // Show landing page
   return (
     <div className="min-h-screen bg-white">
       <LandingNavbar />
       <main>
         <HeroSection />
+        <TrustSection />
+        <ProblemSection />
         <FeaturesSection />
+        <WhyChooseUsSection />
         <HowItWorksSection />
+        <TestimonialsSection />
         <PricingSection />
+        <FAQSection />
         <CTASection />
       </main>
       <LandingFooter />

@@ -13,39 +13,56 @@ function getSupabaseAdmin() {
   return _supabaseAdmin;
 }
 
+function generateSlug(name: string): string {
+  let slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+
+  if (!slug) {
+    slug = 'org';
+  }
+
+  return slug;
+}
+
+async function makeUniqueSlug(supabaseAdmin: SupabaseClient, baseSlug: string): Promise<string> {
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const { count } = await supabaseAdmin
+      .from('organizations')
+      .select('id', { count: 'exact', head: true })
+      .eq('slug', slug);
+
+    if (!count || count === 0) return slug;
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { orgName, orgSlug, adminEmail, adminFirstName, adminLastName, adminPassword } = body;
+    const { orgName, adminEmail, adminFirstName, adminLastName, adminPassword } = body;
 
-    if (!orgName || !orgSlug || !adminEmail || !adminFirstName || !adminLastName || !adminPassword) {
+    if (!orgName || !adminEmail || !adminFirstName || !adminLastName || !adminPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
-    // Validate slug format
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(orgSlug)) {
-      return NextResponse.json(
-        { error: 'Slug must contain only lowercase letters, numbers, and hyphens' },
-        { status: 400 }
-      );
-    }
-
-    // Validate password strength
     if (adminPassword.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Check slug availability
-    const { count } = await supabaseAdmin
-      .from('organizations')
-      .select('id', { count: 'exact', head: true })
-      .eq('slug', orgSlug);
-
-    if (count && count > 0) {
-      return NextResponse.json({ error: 'This organization URL is already taken' }, { status: 400 });
-    }
+    // Auto-generate slug from org name and ensure uniqueness
+    const baseSlug = generateSlug(orgName);
+    const orgSlug = await makeUniqueSlug(supabaseAdmin, baseSlug);
 
     // Check if admin email already exists
     const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
@@ -83,7 +100,6 @@ export async function POST(req: Request) {
     });
 
     if (authError) {
-      // Rollback: delete the organization
       await supabaseAdmin.from('organizations').delete().eq('id', orgData.id);
       throw authError;
     }
@@ -113,7 +129,6 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       orgId: orgData.id,
-      orgSlug: orgSlug,
       userId: authData.user.id,
     });
   } catch (err) {

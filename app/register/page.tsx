@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { isSlugAvailable } from '@/lib/organizations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,34 +17,17 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Globe,
   Sparkles,
 } from 'lucide-react';
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-}
 
 export default function RegisterPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [slugChecking, setSlugChecking] = useState(false);
-  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [error, setError] = useState('');
 
-  // Step 1: Organization
   const [orgName, setOrgName] = useState('');
-  const [orgSlug, setOrgSlug] = useState('');
-
-  // Step 2: Admin
   const [adminFirstName, setAdminFirstName] = useState('');
   const [adminLastName, setAdminLastName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -58,42 +40,13 @@ export default function RegisterPage() {
     }
   }, [user, profile, authLoading, router]);
 
-  useEffect(() => {
-    if (!orgSlug) {
-      setSlugAvailable(null);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setSlugChecking(true);
-      const available = await isSlugAvailable(orgSlug);
-      setSlugAvailable(available);
-      setSlugChecking(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [orgSlug]);
-
-  function handleOrgNameChange(value: string) {
-    setOrgName(value);
-    if (!orgSlug || orgSlug === generateSlug(orgName)) {
-      setOrgSlug(generateSlug(value));
-    }
-  }
-
   function validateStep1(): boolean {
     if (!orgName.trim()) {
       setError('Organization name is required');
       return false;
     }
-    if (!orgSlug.trim()) {
-      setError('Organization URL is required');
-      return false;
-    }
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(orgSlug)) {
-      setError('URL must contain only lowercase letters, numbers, and hyphens');
-      return false;
-    }
-    if (slugAvailable === false) {
-      setError('This URL is already taken');
+    if (orgName.trim().length < 2) {
+      setError('Organization name must be at least 2 characters');
       return false;
     }
     setError('');
@@ -145,7 +98,6 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orgName: orgName.trim(),
-          orgSlug,
           adminEmail: adminEmail.trim(),
           adminFirstName: adminFirstName.trim(),
           adminLastName: adminLastName.trim(),
@@ -161,7 +113,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // Sign in the user
       const { getSupabase } = await import('@/lib/supabase');
       const { error: signInError } = await getSupabase().auth.signInWithPassword({
         email: adminEmail.trim(),
@@ -169,8 +120,7 @@ export default function RegisterPage() {
       });
 
       if (signInError) {
-        // User was created but sign-in failed — redirect to login
-        router.push(`/login?registered=true&org=${orgSlug}`);
+        router.push('/login?registered=true');
         return;
       }
 
@@ -204,7 +154,6 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Step Indicator */}
         <div className="mb-6 flex items-center justify-center gap-2">
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
@@ -231,7 +180,7 @@ export default function RegisterPage() {
                   <div>
                     <h2 className="text-lg font-semibold text-[#032364]">Organization Details</h2>
                     <p className="text-sm text-muted-foreground">
-                      Tell us about your organization
+                      What&apos;s the name of your organization?
                     </p>
                   </div>
 
@@ -243,39 +192,10 @@ export default function RegisterPage() {
                         id="orgName"
                         required
                         value={orgName}
-                        onChange={(e) => handleOrgNameChange(e.target.value)}
+                        onChange={(e) => setOrgName(e.target.value)}
                         placeholder="Acme Corporation"
                         className="h-11 rounded-lg border-[#0000004c] pl-10"
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="orgSlug">Organization URL</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="orgSlug"
-                        required
-                        value={orgSlug}
-                        onChange={(e) => {
-                          setOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-                          setSlugAvailable(null);
-                        }}
-                        placeholder="acme-corp"
-                        className="h-11 rounded-lg border-[#0000004c] pl-10"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      {slugChecking ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                      ) : slugAvailable === true ? (
-                        <span className="text-green-600">Available!</span>
-                      ) : slugAvailable === false ? (
-                        <span className="text-destructive">Already taken</span>
-                      ) : (
-                        <span className="text-muted-foreground">Your portal URL will be: {orgSlug || 'your-org'}</span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -388,7 +308,7 @@ export default function RegisterPage() {
                 )}
                 <Button
                   type="submit"
-                  disabled={loading || (step === 1 && slugAvailable === false)}
+                  disabled={loading}
                   className="h-11 flex-1 rounded-lg bg-[#032364] text-base font-medium text-white hover:opacity-90"
                 >
                   {loading ? (
