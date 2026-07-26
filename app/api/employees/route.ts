@@ -31,12 +31,17 @@ export async function POST(req: Request) {
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, org_id')
       .eq('id', user.id)
       .maybeSingle();
 
     if (!profile || (profile.role !== 'hr_admin' && profile.role !== 'super_admin')) {
       return NextResponse.json({ error: 'Only HR admins or super admins can manage employees' }, { status: 403 });
+    }
+
+    const orgId = profile.org_id;
+    if (!orgId) {
+      return NextResponse.json({ error: 'User is not associated with an organization' }, { status: 400 });
     }
 
     const body = await req.json();
@@ -57,17 +62,43 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
+      // Plan limits enforcement
+      const { data: org } = await supabaseAdmin
+        .from('organizations')
+        .select('plan, max_employees')
+        .eq('id', orgId)
+        .single();
+
+      if (org && org.max_employees !== -1) {
+        const { count } = await supabaseAdmin
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('org_id', orgId)
+          .eq('is_active', true);
+
+        if (count !== null && count >= org.max_employees) {
+          return NextResponse.json({
+            error: `Employee limit reached. Your ${org.plan} plan allows ${org.max_employees} employees. Please upgrade to add more.`,
+            limitReached: true,
+            current: count,
+            max: org.max_employees,
+            plan: org.plan,
+          }, { status: 403 });
+        }
+      }
+
       const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { first_name, last_name, role: role || 'employee' },
+        user_metadata: { first_name, last_name, role: role || 'employee', org_id: orgId },
       });
 
       if (authErr) throw authErr;
 
       const { error: profErr } = await supabaseAdmin.from('profiles').upsert({
         id: authData.user.id,
+        org_id: orgId,
         employee_id: employee_id || null,
         first_name,
         last_name,
@@ -99,6 +130,7 @@ export async function POST(req: Request) {
 
       await supabaseAdmin.from('audit_logs').insert({
         actor_id: user.id,
+        org_id: orgId,
         action: 'create',
         entity: 'employee',
         entity_id: authData.user.id,
@@ -117,7 +149,8 @@ export async function POST(req: Request) {
       const { error: profErr } = await supabaseAdmin
         .from('profiles')
         .update({ ...profileUpdates, updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('org_id', orgId);
 
       if (profErr) throw profErr;
 
@@ -128,6 +161,7 @@ export async function POST(req: Request) {
 
       await supabaseAdmin.from('audit_logs').insert({
         actor_id: user.id,
+        org_id: orgId,
         action: 'update',
         entity: 'employee',
         entity_id: id,
@@ -146,6 +180,7 @@ export async function POST(req: Request) {
 
       await supabaseAdmin.from('audit_logs').insert({
         actor_id: user.id,
+        org_id: orgId,
         action: 'delete',
         entity: 'employee',
         entity_id: id,

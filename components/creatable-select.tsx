@@ -16,6 +16,7 @@ interface CreatableSelectProps {
   value: string;
   onChange: (value: string) => void;
   table: string;
+  orgId?: string;
   placeholder?: string;
   className?: string;
 }
@@ -24,6 +25,7 @@ export function CreatableSelect({
   value,
   onChange,
   table,
+  orgId,
   placeholder = 'Select or type to create...',
   className,
 }: CreatableSelectProps) {
@@ -36,16 +38,19 @@ export function CreatableSelect({
 
   const fetchOptions = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await getSupabase()
+    let query = getSupabase()
       .from(table)
-      .select('name')
-      .order('name');
+      .select('name');
+
+    if (orgId) query = query.eq('org_id', orgId);
+
+    const { data, error } = await query.order('name');
     if (error) {
       toast.error('Failed to load departments: ' + error.message);
     }
     if (data) setOptions(data.map((r: { name: string }) => r.name));
     setLoading(false);
-  }, [table]);
+  }, [table, orgId]);
 
   useEffect(() => {
     if (open) {
@@ -69,7 +74,7 @@ export function CreatableSelect({
     try {
       const { data, error } = await getSupabase()
         .from(table)
-        .insert({ name: trimmed })
+        .insert({ name: trimmed, org_id: orgId })
         .select('name')
         .single();
       if (error) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import { useTenant } from '@/lib/tenant-context';
 import { Profile, Role } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,6 +27,9 @@ import {
   Loader2,
   Building2,
   Menu,
+  CreditCard,
+  Banknote,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,12 +45,15 @@ const menuItems: NavItem[] = [
   { label: 'Attendance', href: '/attendance', icon: Calendar, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
   { label: 'Employees', href: '/employees', icon: Users, roles: ['hr_admin', 'super_admin'] },
   { label: 'Time Off', href: '/time-off', icon: Clock, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
+  { label: 'Payroll', href: '/payroll', icon: Banknote, roles: ['hr_admin', 'super_admin'] },
   { label: 'Reports', href: '/reports', icon: FileBarChart, roles: ['manager', 'hr_admin', 'super_admin'] },
 ];
 
 const generalItems: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['employee', 'manager', 'hr_admin', 'super_admin'] },
+  { label: 'Billing', href: '/billing', icon: CreditCard, roles: ['hr_admin', 'super_admin'] },
   { label: 'Security', href: '/security', icon: ShieldCheck, roles: ['super_admin'] },
+  { label: 'Admin Panel', href: '/admin', icon: Shield, roles: ['super_admin'] },
 ];
 
 function getInitials(p: Profile | null) {
@@ -67,12 +74,18 @@ function SidebarContent({
   pathname,
   visibleMenu,
   visibleGeneral,
+  orgName,
+  orgLogoUrl,
+  primaryColor,
   onNavigate,
   onSignOut,
 }: {
   pathname: string;
   visibleMenu: NavItem[];
   visibleGeneral: NavItem[];
+  orgName: string;
+  orgLogoUrl: string | null;
+  primaryColor: string;
   onNavigate?: () => void;
   onSignOut: () => void;
 }) {
@@ -80,8 +93,12 @@ function SidebarContent({
     <>
       <header className="flex min-h-[50px] items-center justify-center px-5">
         <div className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-white" />
-          <h1 className="text-xl font-bold text-white">VCGL ONE</h1>
+          {orgLogoUrl ? (
+            <img src={orgLogoUrl} alt={orgName} className="h-6 w-6 rounded object-contain" />
+          ) : (
+            <Building2 className="h-6 w-6 text-white" />
+          )}
+          <h1 className="text-xl font-bold text-white">{orgName}</h1>
         </div>
       </header>
 
@@ -161,6 +178,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile, loading, signOut } = useAuth();
+  const { organization } = useTenant();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const {
@@ -195,6 +213,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const visibleMenu = menuItems.filter((item) => item.roles.includes(profile.role));
   const visibleGeneral = generalItems.filter((item) => item.roles.includes(profile.role));
 
+  const orgName = organization?.name || 'HR Platform';
+  const orgLogoUrl = organization?.logo_url || null;
+  const primaryColor = organization?.primary_color || '#032364';
+
   async function handleSignOut() {
     await signOut();
     router.replace('/login');
@@ -208,6 +230,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           pathname={pathname}
           visibleMenu={visibleMenu}
           visibleGeneral={visibleGeneral}
+          orgName={orgName}
+          orgLogoUrl={orgLogoUrl}
+          primaryColor={primaryColor}
           onSignOut={handleSignOut}
         />
       </aside>
@@ -220,6 +245,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               pathname={pathname}
               visibleMenu={visibleMenu}
               visibleGeneral={visibleGeneral}
+              orgName={orgName}
+              orgLogoUrl={orgLogoUrl}
+              primaryColor={primaryColor}
               onNavigate={() => setMobileOpen(false)}
               onSignOut={handleSignOut}
             />
@@ -244,12 +272,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 min-w-0">
             <Avatar className="h-[48px] w-[44px] md:h-[60px] md:w-[56px] rounded-lg shrink-0">
               <AvatarImage src={profile.avatar_url ?? undefined} />
-              <AvatarFallback className="rounded-lg bg-[#032364] text-base md:text-lg font-semibold text-white">
+              <AvatarFallback className="rounded-lg text-base md:text-lg font-semibold text-white" style={{ backgroundColor: primaryColor }}>
                 {getInitials(profile)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="text-xs text-[#0e3a94]">Welcome</p>
+              <p className="text-xs" style={{ color: primaryColor }}>Welcome</p>
               <p className="text-sm font-medium text-black truncate">
                 {profile.employee_id ? `${profile.employee_id} - ` : ''}
                 {profile.first_name} {profile.last_name}

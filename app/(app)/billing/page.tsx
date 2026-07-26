@@ -1,0 +1,312 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { useTenant } from '@/lib/tenant-context';
+import {
+  getCurrentSubscription,
+  getOrgUsage,
+  getInvoices,
+  formatPrice,
+  formatLimit,
+  getUsagePercentage,
+  isUnlimited,
+  isPlanActive,
+  type Subscription,
+  type OrgUsage,
+  type Invoice,
+} from '@/lib/billing';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import {
+  CreditCard,
+  Users,
+  Building2,
+  ArrowUpRight,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Calendar,
+  Download,
+  ExternalLink,
+} from 'lucide-react';
+
+export default function BillingPage() {
+  const router = useRouter();
+  const { user, profile, loading } = useAuth();
+  const { organization } = useTenant();
+
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [usage, setUsage] = useState<OrgUsage | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (!loading && (!user || !profile)) {
+      router.replace('/login');
+    }
+  }, [user, profile, loading, router]);
+
+  useEffect(() => {
+    if (!profile?.org_id) return;
+
+    async function loadBillingData() {
+      setLoadingData(true);
+      const [sub, usageData, invoiceData] = await Promise.all([
+        getCurrentSubscription(profile!.org_id),
+        getOrgUsage(profile!.org_id),
+        getInvoices(profile!.org_id),
+      ]);
+      setSubscription(sub);
+      setUsage(usageData);
+      setInvoices(invoiceData);
+      setLoadingData(false);
+    }
+
+    loadBillingData();
+  }, [profile?.org_id]);
+
+  if (loading || loadingData) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0e3a94]" />
+      </div>
+    );
+  }
+
+  const planName = subscription?.plan_name || (organization?.plan === 'enterprise' ? 'Enterprise' : organization?.plan === 'pro' ? 'Professional' : organization?.plan === 'starter' ? 'Starter' : 'Free');
+  const planStatus = subscription?.status || 'active';
+  const employeeUsage = usage?.employee_count || 0;
+  const employeeMax = usage?.plan_max_employees ?? organization?.max_employees ?? 10;
+  const departmentUsage = usage?.department_count || 0;
+  const departmentMax = usage?.plan_max_departments ?? 3;
+  const employeePercent = getUsagePercentage(employeeUsage, employeeMax);
+  const departmentPercent = getUsagePercentage(departmentUsage, departmentMax);
+  const isAtLimit = employeePercent >= 90 && !isUnlimited(employeeMax);
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg md:text-xl font-bold text-[#051536]">Billing & Subscription</h1>
+          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+            Manage your plan, usage, and invoices
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push('/billing/upgrade')}
+          className="rounded-lg bg-[#032364] hover:bg-[#032364]/90"
+        >
+          <ArrowUpRight className="mr-2 h-4 w-4" />
+          Upgrade Plan
+        </Button>
+      </div>
+
+      {/* Current Plan */}
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#032364]/10">
+              <CreditCard className="h-4 w-4 text-[#032364]" />
+            </div>
+            <h2 className="text-sm font-semibold text-[#051536]">Current Plan</h2>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-[#051536]">{planName}</h3>
+                <Badge
+                  variant={isPlanActive(planStatus) ? 'default' : 'destructive'}
+                  className="text-xs"
+                >
+                  {planStatus === 'active' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                  {planStatus !== 'active' && <AlertCircle className="mr-1 h-3 w-3" />}
+                  {planStatus.charAt(0).toUpperCase() + planStatus.slice(1)}
+                </Badge>
+              </div>
+              {subscription && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatPrice(subscription.price_monthly)}/month
+                  {subscription.billing_cycle === 'yearly' && ` (billed ${formatPrice(subscription.price_yearly)}/year)`}
+                </p>
+              )}
+              {!subscription && organization?.plan && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {organization.plan === 'free' ? 'Free plan — no payment required' : `Current plan: ${organization.plan}`}
+                </p>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/billing/upgrade')}
+              className="rounded-lg shrink-0"
+            >
+              Change Plan
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Usage */}
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#032364]/10">
+              <Users className="h-4 w-4 text-[#032364]" />
+            </div>
+            <h2 className="text-sm font-semibold text-[#051536]">Usage</h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Employees */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-[#051536]">Employees</span>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {employeeUsage} / {formatLimit(employeeMax)}
+                </span>
+              </div>
+              {!isUnlimited(employeeMax) && (
+                <>
+                  <Progress value={employeePercent} className="h-2" />
+                  {isAtLimit && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      You&apos;re at {employeePercent}% of your employee limit
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Departments */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-[#051536]">Departments</span>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {departmentUsage} / {formatLimit(departmentMax)}
+                </span>
+              </div>
+              {!isUnlimited(departmentMax) && (
+                <Progress value={departmentPercent} className="h-2" />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Plan Features */}
+      {subscription && subscription.features.length > 0 && (
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#032364]/10">
+                <CheckCircle2 className="h-4 w-4 text-[#032364]" />
+              </div>
+              <h2 className="text-sm font-semibold text-[#051536]">Included Features</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {subscription.features.map((feature) => (
+                <div key={feature} className="flex items-center gap-2 text-sm text-[#051536]">
+                  <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                  {feature}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Invoices */}
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#032364]/10">
+              <Calendar className="h-4 w-4 text-[#032364]" />
+            </div>
+            <h2 className="text-sm font-semibold text-[#051536]">Invoices</h2>
+          </div>
+
+          {invoices.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">No invoices yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Invoices will appear here after your first payment
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {invoices.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-[#e2e8f0]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#051536]">
+                        {invoice.description || `Invoice #${invoice.id.slice(0, 8)}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(invoice.invoice_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant={
+                        invoice.status === 'paid' ? 'default' :
+                        invoice.status === 'pending' ? 'secondary' : 'destructive'
+                      }
+                      className="text-xs"
+                    >
+                      {invoice.status}
+                    </Badge>
+                    <span className="text-sm font-medium text-[#051536]">
+                      {formatPrice(invoice.amount, invoice.currency)}
+                    </span>
+                    {invoice.status === 'paid' && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment Provider Info */}
+      <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#032364]/10">
+              <ExternalLink className="h-4 w-4 text-[#032364]" />
+            </div>
+            <h2 className="text-sm font-semibold text-[#051536]">Payment Settings</h2>
+          </div>
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground">
+              Payment integration coming soon
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Stripe and Flutterwave integration will be available in a future update
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

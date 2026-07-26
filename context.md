@@ -2,9 +2,9 @@
 
 # Current Project Context
 
-Project Name: HR Management System (HRMS)
-Last Updated: July 15, 2026
-Project Status: Active Development
+Project Name: HR Management System (HRMS) — SaaS Platform
+Last Updated: July 25, 2026
+Project Status: Active Development — SaaS Transformation In Progress
 
 ---
 
@@ -30,7 +30,7 @@ Backend
 - Supabase Storage
 
 Deployment
-- Netlify (configured via netlify.toml)
+- vercel
 
 Repository
 - GitHub
@@ -62,6 +62,9 @@ The following features are present in the codebase:
 - Security page for super admin access
 - Supabase integration and edge function-based employee management
 - Shared UI components from shadcn/ui
+- Multi-tenancy foundation (organizations table, org_id on all tables)
+- Tenant context provider with subdomain detection
+- Dynamic branding (org name, logo, primary color)
 
 ---
 
@@ -218,7 +221,7 @@ Before writing code:
 
 1. Read AGENT.md.
 2. Read PROJECT.md.
-3. Read CONTEXT.md.
+3. Read CONTEXT.md and PROCESS.md.
 4. Inspect the existing implementation.
 5. Explain the planned changes before making them.
 6. Preserve working functionality.
@@ -241,3 +244,68 @@ Never assume a feature exists—verify it in the codebase first.
 - CONTEXT.md created.
 
 Future updates should be added here whenever significant milestones are reached.
+
+## 2026-07-25
+
+- SaaS transformation initiated — multi-tenancy architecture
+- Phase 1 Complete: Database & Multi-Tenancy Foundation
+  - Created organizations table with branding fields
+  - Added org_id foreign key to all 8 existing tables
+  - Updated all RLS policies for org-level data isolation
+  - Created default organization "VCGL ONE" for existing data
+  - Updated database functions (handle_new_user, create_department, get_departments, get_current_organization)
+- Phase 2 Complete: Authentication & Tenant Context
+  - Created TenantProvider for subdomain detection
+  - Created Next.js middleware for subdomain extraction
+  - Auth context now loads organization data with profile
+  - Login page and sidebar use dynamic branding
+  - API routes (employees, departments) scoped to user's org_id
+- Phase 3 Complete: Organization Registration & Onboarding
+  - Created invitations table for member invites
+  - Added registration page (/register) with multi-step form
+  - Added accept-invite page (/accept-invite) for invitation flow
+  - Added onboarding wizard (/onboarding) for post-registration setup
+  - Added API routes for registration and invitations
+  - Added invite members dialog to employee management page
+  - Updated login page with "Create new organization" link
+- Phase 4 Complete: Tenant-Scoped Queries & RLS
+  - Audited 56 unscoped queries across 14 files — all fixed
+  - Created useOrganization() hook for easy org_id access
+  - All page component queries now filtered by org_id
+  - All inserts/upserts now include org_id in payload
+  - Library functions (audit, notifications) accept orgId parameter
+  - CreatableSelect component accepts orgId prop for scoped department queries
+- Phase 5 Complete: Custom Branding & UI
+  - Created Supabase Storage bucket for org logos
+  - Added branding settings tab (logo upload, color picker, org name)
+  - Created useBranding() hook for dynamic CSS variables
+  - DynamicBrandStyles component injects CSS variables at runtime
+  - --primary Tailwind variable now derives from org's primary_color
+- Phase 6 Complete: Subscription & Billing
+  - Created plans, subscriptions, invoices tables with RLS
+  - Seeded 4 plan tiers (Free, Starter, Pro, Enterprise) with pricing
+  - Created lib/billing.ts with plan types, pricing helpers, subscription CRUD
+  - Built billing page (current plan, usage progress, invoices)
+  - Built pricing/upgrade page with plan comparison grid
+  - Enforced plan limits on employee creation API (returns 403 when at limit)
+  - Added Billing link to sidebar for hr_admin/super_admin
+  - Payment provider integration (Stripe, Flutterwave) scaffolded, needs API keys
+- Phase 7 Complete: Payroll & Attendance
+  - Created work_schedules, employee_compensation, payroll_runs, payslips tables
+  - Created lib/payroll.ts with schedule CRUD, compensation, payroll runs, payslip generation
+  - Built payroll dashboard page (stats, latest run, history)
+  - Built payroll run creation page with auto payslip generation from attendance
+  - Built payroll run detail page (payslips table, approve/mark paid workflow)
+  - Fixed attendance late status to use configurable work schedule (start time + grace period)
+  - Added Work Schedule and Compensation tabs to Settings page
+  - Added Payroll link to sidebar for hr_admin/super_admin
+- Phase 8 Complete: Super Admin Dashboard
+  - Created admin layout with role-gated sidebar (super_admin only)
+  - Built platform overview dashboard (org stats, user stats, plan distribution, recent signups)
+  - Built organization management page (list all orgs, search, view/edit details)
+  - Built organization detail page (edit settings, view members)
+  - Built cross-org user management page (search, filter, change roles, activate/deactivate)
+  - Built platform-wide audit log viewer
+  - Created admin API routes (stats, organizations, users) with super_admin verification
+  - Added "Admin Panel" link to sidebar for super_admin role
+- Progress tracked in PROCESS.md

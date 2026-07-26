@@ -1,258 +1,284 @@
-# PROCESS.md
+# SaaS Transformation — Progress Tracker
 
-# Development Progress Tracker
-
-Project: HR Management System (HRMS)
-Last Updated: July 25, 2026
-Status: Active Development
+## Project: HR Management System → Multi-Tenant SaaS Platform
+## Started: July 25, 2026
 
 ---
 
-# Current Sprint
+## Completed Phases
 
-Sprint Goal: Deliver a stable HR foundation.
+### Phase 1: Database & Multi-Tenancy Foundation ✅
 
-| Task | Status | Notes |
-|------|--------|-------|
-| Authentication system | Done | Supabase Auth, session persistence, profile loading |
-| Dashboard | Done | Live data, check-in/out, stats, leave balances |
-| Employee module | Done | Full CRUD with auth user creation, audit logging |
-| Attendance module | Done | Check-in/out with GPS, live timer, team view, history |
-| Leave management | Done | Leave types, balances, approval workflow, audit logging |
-| Reports module | Done | Real data aggregation, CSV/XLS export |
-| Super admin role parity | Done | Super admin now has full access to all HR admin modules |
-| Notifications system | Done | Bell, real-time, attendance reminders, leave alerts |
-| Mobile responsiveness | Done | Viewport meta, scrollable tabs, responsive dialogs |
-| Location address names | Done | Reverse geocoding, human-readable addresses |
+**Migration:** `supabase/migrations/20260725300000_add_multi_tenancy.sql`
 
----
+- Created `organizations` table (id, name, slug, logo_url, primary_color, plan, max_employees)
+- Added `org_id` UUID foreign key to all 8 tables:
+  - profiles, departments, leave_types, leave_balances, leave_requests, attendance_records, audit_logs, notifications
+- Created default organization "VCGL ONE" (`00000000-0000-0000-0000-000000000001`) for existing data
+- Updated RLS policies on all tables — org-scoped with super_admin bypass
+- Updated database functions:
+  - `handle_new_user()` — accepts org_id from user metadata
+  - `create_department(name, org_id)` — scoped to org
+  - `get_departments()` — filters by user's org
+  - `get_new function()` — returns current user's organization
+- Added performance indexes on all org_id columns
+- Updated unique constraints to include org_id (departments, leave_types, attendance, leave_balances)
 
-# Feature Completion
-
-## Authentication
-
-- [x] Login form with email/password
-- [x] Session persistence via Supabase Auth
-- [x] User profile fetch from `profiles` table
-- [x] Role-based redirect after login
-- [x] Sign out with redirect to login
-- [x] Auto-create profile on new user signup (database trigger)
-
-## Dashboard
-
-- [x] Clock in/out card with live status
-- [x] Live duration timer (1s interval)
-- [x] Total employees stat (HR/admin only)
-- [x] Present today stat (HR/admin only)
-- [x] Pending leaves stat (HR/admin only)
-- [x] Birthday of the month widget
-- [x] My leave balances with progress bars
-- [x] Recent leave requests list
-- [x] My team view (manager role)
-- [x] Auto-reconciliation for open attendance records
-- [x] Super admin sees all HR admin dashboard features
-- [x] Location address display (human-readable, not coordinates)
-- [ ] "On Leave Today" stat (currently hardcoded to 0)
-
-## Employees
-
-- [x] Employee list with search filtering
-- [x] Employee cards with avatar, name, ID, role, contact info
-- [x] Create employee (multi-section form with experience, education, dependents)
-- [x] Edit employee via dedicated form page (`/employees/new?id=`)
-- [x] Delete employee with confirmation
-- [x] Department selection and inline creation
-- [x] Audit logging on create/update/delete
-- [x] Backend creates real Supabase auth users
-- [x] Role-based access (hr_admin, super_admin)
-- [x] Card/table view toggle (HR/super_admin only)
-- [x] Profile picture display on cards and table
-
-## Attendance
-
-- [x] Check in with GPS coordinates
-- [x] Check out with GPS coordinates
-- [x] Live duration timer
-- [x] Status calculation (present, late, half_day, absent)
-- [x] Team attendance view (manager/HR/super_admin)
-- [x] Monthly history with date navigation
-- [x] Auto-reconciliation for stale records
-- [x] Location display on UI (human-readable addresses via OpenStreetMap)
-- [x] Unique constraint per employee per day
-- [x] Reverse geocoding for check-in/out locations
-
-## Time Off / Leave
-
-- [x] Leave types (Annual, Sick, Emergency, Maternity, Paternity, Unpaid)
-- [x] Leave balances with remaining/used/pending display
-- [x] Request leave with auto day calculation
-- [x] My requests list with status badges
-- [x] Pending approvals view (HR/super_admin)
-- [x] Approve request (updates balance, logs action)
-- [x] Reject request with reason (reverts balance, logs action)
-- [x] RLS policies for employee-level data access
-- [x] Auto-notification on leave approval/rejection (database trigger)
-
-## Reports
-
-- [x] Summary stats (team size, present, late, pending leaves)
-- [x] Per-employee attendance breakdown with rate percentage
-- [x] Monthly trend chart (last 6 months)
-- [x] Leave summary (approved, pending, rejected)
-- [x] CSV export for attendance and leave
-- [x] XLS export for attendance and leave
-- [x] Role-scoped data (manager sees team, HR/super_admin sees all)
-- [x] Location address columns in export
-
-## Settings
-
-- [x] Profile editing (name, nickname, phone, job title)
-- [x] Leave type CRUD (add, edit, delete with confirmation)
-- [x] Leave balance customization per employee per year
-- [x] Action logging on leave type changes
-- [x] Super admin has full settings access including leave types and balances
-- [x] Profile picture upload with 5MB limit
-- [x] Work Experience, Education, Dependent details sections
-- [x] Full profile form visible to all users (restricted fields for employees/managers)
-
-## Security
-
-- [x] Audit log viewer with up to 200 entries
-- [x] Summary stats (total, creates, deletes)
-- [x] Search/filter by action, entity, actor, email
-- [x] Immutable log table (no update/delete via RLS)
-- [x] Super admin role restriction
-
-## Notifications
-
-- [x] `notifications` table with RLS (users read/update own only)
-- [x] Bell icon with red unread count badge in header
-- [x] Dropdown notification panel with scrollable list
-- [x] Mark individual notifications as read (click)
-- [x] Mark all as read button
-- [x] Delete notifications
-- [x] Supabase Realtime subscription for live updates
-- [x] Browser Notification API for native push
-- [x] Synthesized chime sound on new notifications
-- [x] Check-in reminder at 8:30 AM (only if not checked in)
-- [x] Check-out reminder at 5:00 PM (only if checked in but not out)
-- [x] Leave approval/rejection auto-notifications (database trigger)
-- [x] Conditional reminders via localStorage deduplication
-- [x] Permission request on first user interaction
-
-## Mobile Responsiveness
-
-- [x] Viewport meta tag with `userScalable: false`
-- [x] Employees table in `overflow-x-auto` with min-width
-- [x] All dialogs responsive (`w-[calc(100vw-2rem)]`)
-- [x] Scrollable tab lists on mobile
-- [x] Timer text scaled (`text-3xl sm:text-5xl`)
-- [x] Buttons full-width on mobile (`w-full sm:w-auto`)
-- [x] Settings sections stack vertically on mobile
+**TypeScript:**
+- `lib/supabase.ts` — Added `Organization` interface, `org_id` to all interfaces
+- `lib/organizations.ts` — Created organization service (CRUD, slug detection, URL builders)
 
 ---
 
-# Known Issues & Gaps
+### Phase 2: Authentication & Tenant Context ✅
 
-- "On Leave Today" stat on dashboard is hardcoded to 0 — query not yet implemented
-- Edge function `manage-employee` duplicates the API route logic — could be consolidated
-- Department management uses direct PostgreSQL (`pg` Pool) instead of Supabase client
-- `CreatableSelect` component was added to work around PostgREST schema cache issue
-- Business logic could be further extracted from page components into service helpers
-- Error handling and loading states could be improved across modules
-- pg_cron not yet enabled for server-side attendance reminders (client-side fallback active)
-- Browser notification permission must be granted manually (first click triggers request)
+**New Files:**
+- `lib/tenant-context.tsx` — TenantProvider detects org from subdomain or cookie, loads org data
+- `middleware.ts` — Next.js middleware extracts subdomain, stores `org_slug` cookie
 
----
+**Modified Files:**
+- `lib/auth-context.tsx` — Profile query joins `organization` table, exposes `organization` in context
+- `app/layout.tsx` — Wrapped with `<TenantProvider>`, removed hardcoded "VCGL ONE" branding
+- `app/page.tsx` — Org-aware redirect logic (subdomain → login/dashboard)
+- `app/login/page.tsx` — Dynamic branding (org name, logo, primary color)
+- `app/(app)/layout.tsx` — Sidebar + header use org name, logo, primary color
+- `app/api/employees/route.ts` — All CRUD scoped to user's org_id, audit logs include org_id
+- `app/api/departments/route.ts` — Added auth, GET/POST scoped to user's org_id
 
-# Dev Log
-
-## 2026-07-13
-
-- Project initialized with Next.js 15, Supabase, Tailwind, shadcn/ui
-- 7 Supabase migrations created covering all core tables and RLS policies
-- Authentication system implemented (login, session, profile)
-- Dashboard built with live data from Supabase
-- Employee module with full CRUD and edge function backend
-- Attendance module with check-in/out and GPS
-- Leave management with types, balances, and approval workflow
-- Reports module with data aggregation and export
-- Settings and Security pages implemented
-
-## 2026-07-14
-
-- Extended profile fields added (gender, DOB, marital status, nationality, address, emergency contacts, bank info, employment details)
-- Work experience, education, and dependent details added as JSONB fields
-- Attendance GPS location fields added (check-in/out lat/lng)
-- Project migrated from Bolt.new to Visual Studio Code
-- Git repository initialized
-- AGENT.md, PROJECT.md, CONTEXT.md created
-- AI-assisted development workflow adopted
-
-## 2026-07-23
-
-- Departments feature started
-- `departments` table created with RLS policies
-
-## 2026-07-24
-
-- Fixed departments RLS grants
-- Created `get_departments()` and `create_department()` RPC functions
-- Added departments API route using direct PostgreSQL connection
-- Added departments edge function
-- Added `CreatableSelect` component for department selection
-
-## 2026-07-25 (Morning)
-
-- Created process.md to track development progress
-- Extended super admin role to have full access to all HR admin modules
-- Updated sidebar navigation to show all modules for super_admin
-- Updated page-level role checks in attendance, time-off, reports, dashboard, settings
-- Cleaned up redundant `isSuperAdmin` checks in dashboard
-- Audit log (Security) remains super_admin-only as intended
-
-## 2026-07-25 (Afternoon — Location & Employees)
-
-- Added reverse geocoding utility (`lib/geocode.ts`) using Nominatim/OpenStreetMap API
-- Created migration `20260725100000_add_attendance_location_names.sql` adding `check_in_location` and `check_out_location` text columns
-- Updated `AttendanceRecord` type with location name fields
-- Updated dashboard and attendance check-in/check-out handlers to fetch and store human-readable addresses
-- Updated UI to display location names instead of raw coordinates
-- Updated reports CSV/XLS export to include Check-in/Check-out Location columns
-- Fixed employees/new page — now accepts `?id=` query param for edit mode with full form pre-filled
-- Edit button on employees page navigates to `/employees/new?id=` instead of opening inline dialog
-- Fixed Suspense boundary issue for `useSearchParams` in employees/new page
-- Added viewport meta tag with `maximumScale: 1, userScalable: false` for mobile
-- Added `overflow-x: hidden` to html/body in globals.css
-- Made all dialogs responsive with `w-[calc(100vw-2rem)]`
-- Added scrollable tabs on mobile for time-off and attendance pages
-- Scaled timer text for mobile (`text-3xl sm:text-5xl`)
-- Made buttons full-width on mobile for time-off and settings pages
-- Stacked settings profile picture section vertically on mobile
-- Made settings employee selector responsive (`w-full sm:w-[260px]`)
-
-## 2026-07-25 (Evening — Notifications System)
-
-- Created `notifications` table with RLS, indexes, and `create_notification()` RPC function
-- Created database trigger `trg_leave_status_change` for automatic leave approval/rejection notifications
-- Added `NotificationRecord` and `NotificationType` types to `lib/supabase.ts`
-- Created `lib/notifications.ts` — CRUD service (create, fetch, mark read, mark all read, delete)
-- Created `lib/push-notifications.ts` — Browser Notification API + synthesized chime sound
-- Created `hooks/use-notifications.ts` — Supabase Realtime subscription with live updates
-- Created `hooks/use-attendance-reminders.ts` — Client-side 8:30 AM / 5:00 PM reminders with localStorage deduplication
-- Created `components/notifications/notification-bell.tsx` — Bell icon with red unread count badge
-- Created `components/notifications/notification-dropdown.tsx` — Scrollable notification list with mark all as read
-- Integrated notification bell into app header (`app/(app)/layout.tsx`)
-- Wired attendance reminders hook into layout
-- Pushed migration `20260725200000_create_notifications.sql` to Supabase
-- All changes committed and pushed
+**How tenant detection works:**
+1. Production: `acme.hrapp.com` → middleware sets `org_slug` cookie → TenantProvider fetches org by slug
+2. Development: `localhost` → falls back to profile's `org_id` via RPC `get_current_organization()`
 
 ---
 
-# How to Update This File
+## Pending Phases
 
-- **Sprint tasks**: Update status (Done / In Progress / Todo / Blocked) as work progresses
-- **Feature checklist**: Check or uncheck items as features are completed or modified
-- **Known issues**: Add new issues as they are discovered, remove when resolved
-- **Dev log**: Add a dated entry whenever a meaningful feature is completed or changed
-- **Format**: Keep entries concise and action-oriented
+### Phase 3: Organization Registration & Onboarding ✅
+
+**Migration:** `supabase/migrations/20260725400000_add_invitations_and_registration.sql`
+
+- Created `invitations` table (id, org_id, email, role, invited_by, token, status, expires_at)
+- RLS policies for invitation management (org-scoped)
+- Database functions:
+  - `create_organization_with_admin()` — creates org + admin user in one transaction
+  - `invite_member()` — generates invitation token with expiry
+  - `accept_invite()` — validates token and links user to org
+  - `get_pending_invitations()` — lists pending invites for org
+
+**New Files:**
+- `app/register/page.tsx` — Multi-step registration form (org details → admin account)
+- `app/accept-invite/page.tsx` — Invitation acceptance page with password setup
+- `app/onboarding/page.tsx` — Post-registration wizard (departments, leave types, invite team)
+- `app/api/register/route.ts` — API route for org + admin creation
+- `app/api/invitations/route.ts` — API route for invite CRUD operations
+- `lib/invitations.ts` — Invitation service functions
+- `components/invite-members-dialog.tsx` — Reusable invite dialog component
+
+**Modified Files:**
+- `lib/supabase.ts` — Added `Invitation` interface
+- `app/login/page.tsx` — Added "Create new organization" link
+- `app/(app)/employees/page.tsx` — Added "Invite member" button + dialog integration
+
+### Phase 4: Tenant-Scoped Queries & RLS ✅
+
+**Audit Result:** 56 unscoped queries found across 14 files — all fixed.
+
+**New Files:**
+- `hooks/use-organization.ts` — `useOrganization()` hook for easy org_id access
+
+**Fixed Files (org_id scoping added):**
+- `app/(app)/employees/page.tsx` — profiles query now filtered by org_id
+- `app/(app)/employees/new/page.tsx` — managers list + edit query scoped to org
+- `app/(app)/dashboard/page.tsx` — all 12 queries scoped (attendance, leaves, profiles, stats)
+- `app/(app)/attendance/page.tsx` — my records + team records + check-in/upsert scoped
+- `app/(app)/time-off/page.tsx` — leave_types, leave_requests, leave_balances all scoped
+- `app/(app)/settings/page.tsx` — leave_types, profiles, leave_balances queries + inserts scoped
+- `app/(app)/reports/page.tsx` — all attendance + leave + profiles queries scoped
+- `app/(app)/security/page.tsx` — audit_logs query scoped to org
+
+**Fixed Library Files:**
+- `lib/audit.ts` — `logAction()` now accepts optional `orgId` parameter
+- `lib/notifications.ts` — `createNotification()` and `getNotifications()` accept optional `orgId`
+- `components/creatable-select.tsx` — accepts `orgId` prop, queries scoped to org
+
+**Key Changes:**
+- All SELECT queries now include `.eq('org_id', profile.org_id)`
+- All INSERT/UPSERT operations now include `org_id: profile.org_id` in the payload
+- All COUNT queries now include `.eq('org_id', profile.org_id)`
+- Components that need org_id accept it as a prop or derive it from `useAuth()`
+
+### Phase 5: Custom Branding & UI ✅
+
+**Migration:** `supabase/migrations/20260725500000_add_logo_storage.sql`
+
+- Created Supabase Storage bucket `org-logos` (public read, authenticated write)
+- RLS policies for logo upload/delete
+
+**New Files:**
+- `hooks/use-branding.ts` — `useBranding()` hook: provides primary color, CSS variables, org name/logo
+- `components/branding-tab.tsx` — Branding settings tab (logo upload, color picker, org name)
+- `components/dynamic-brand-styles.tsx` — Injects dynamic CSS variables from org's primary color
+
+**Modified Files:**
+- `app/layout.tsx` — Added `<DynamicBrandStyles />` for runtime CSS variable injection
+- `app/globals.css` — `--primary` and `--ring` now reference `--brand-primary-hsl` (dynamic)
+- `app/(app)/settings/page.tsx` — Added "Branding" tab (HR admin only)
+
+**Branding Features:**
+- Logo upload to Supabase Storage (2MB max, public URL)
+- Primary color picker with 16 presets + custom hex input
+- Live preview of color changes
+- Dynamic CSS variables (`--brand-primary`, `--brand-primary-hsl`, etc.) injected at runtime
+- `--primary` Tailwind variable now derives from org's primary color
+
+### Phase 6: Subscription & Billing ✅
+
+**Migration:** `supabase/migrations/20260725600000_add_billing_subscriptions.sql`
+
+- Created `plans` table with 4 tiers (Free, Starter, Professional, Enterprise)
+- Created `subscriptions` table with status, billing cycle, periods
+- Created `invoices` table for payment history
+- Added `billing_email` and `subscription_id` to organizations
+- RLS policies: plans public read, subscriptions/invoices org-scoped
+- Seeded default plans with pricing and feature lists
+- Created `get_current_subscription()` and `get_org_usage()` RPC functions
+
+**New Files:**
+- `lib/billing.ts` — Plan types, pricing helpers, subscription CRUD, usage checks
+- `app/(app)/billing/page.tsx` — Billing page (current plan, usage, invoices)
+- `app/(app)/billing/upgrade/page.tsx` — Pricing page with plan comparison
+
+**Modified Files:**
+- `app/api/employees/route.ts` — Added plan limits enforcement on employee creation
+- `app/(app)/layout.tsx` — Added "Billing" link to sidebar (hr_admin, super_admin)
+
+**Plan Limits Enforcement:**
+- Employee creation API now checks `max_employees` before allowing new users
+- Returns 403 with `limitReached: true` and plan upgrade guidance
+- `canAddEmployee()` function exists but enforcement is now also in the API layer
+
+**Pricing Tiers:**
+| Plan | Monthly | Yearly | Max Employees | Max Departments |
+|------|---------|--------|---------------|-----------------|
+| Free | $0 | $0 | 10 | 3 |
+| Starter | $29 | $290 | 50 | 10 |
+| Professional | $79 | $790 | 200 | 50 |
+| Enterprise | $199 | $1,990 | Unlimited | Unlimited |
+
+**Note:** Payment provider integration (Stripe, Flutterwave) is scaffolded but requires API keys and webhook configuration to go live.
+
+### Phase 7: Payroll & Attendance ✅
+
+**Migration:** `supabase/migrations/20260725700000_add_work_schedules_and_payroll.sql`
+
+- Created `work_schedules` table with configurable start/end time, grace period, work hours
+- Created `employee_compensation` table (base salary, currency, pay frequency)
+- Created `payroll_runs` table (batch payroll processing)
+- Created `payslips` table (individual payslip records)
+- RLS policies: schedules org-scoped, compensation hr-managed, payslips employee-visible
+- Seeded default work schedules for existing orgs
+
+**New Files:**
+- `lib/payroll.ts` — Work schedule CRUD, compensation management, payroll run CRUD, payslip generation
+- `app/(app)/payroll/page.tsx` — Payroll dashboard (stats, latest run, history)
+- `app/(app)/payroll/runs/new/page.tsx` — Create new payroll run with auto payslip generation
+- `app/(app)/payroll/runs/[id]/page.tsx` — Payroll run detail (payslips table, approve/mark paid)
+
+**Modified Files:**
+- `lib/utils.ts` — `attendanceStatusFromDuration()` now accepts work schedule params
+- `app/(app)/attendance/page.tsx` — Loads work schedule, uses configurable late status
+- `app/(app)/settings/page.tsx` — Added Work Schedule and Compensation tabs
+- `app/(app)/layout.tsx` — Added "Payroll" link to sidebar (hr_admin, super_admin)
+- `lib/supabase.ts` — Added PayrollRun, Payslip, WorkSchedule, EmployeeCompensation types
+
+### Phase 8: Super Admin Dashboard ✅
+
+**New Files:**
+- `app/(admin)/layout.tsx` — Admin-specific layout with role-gated sidebar (super_admin only)
+- `app/(admin)/page.tsx` — Platform overview dashboard (org stats, user stats, plan distribution, recent signups)
+- `app/(admin)/organizations/page.tsx` — Organization listing with search, user/dept counts, plan badges
+- `app/(admin)/organizations/[id]/page.tsx` — Organization detail (edit name/plan/limits, view members)
+- `app/(admin)/users/page.tsx` — Cross-org user management (search, filter by role, change role, activate/deactivate)
+- `app/(admin)/audit/page.tsx` — Platform-wide audit log viewer (all orgs, all actions)
+- `lib/admin.ts` — Admin service functions (platform stats, org CRUD, user management)
+- `app/api/admin/stats/route.ts` — Platform statistics API (org/user/dept counts, plan breakdown)
+- `app/api/admin/organizations/route.ts` — Organizations API (list with counts, update org settings)
+- `app/api/admin/users/route.ts` — Users API (list with pagination/filtering, update role/status)
+
+**Modified Files:**
+- `app/(app)/layout.tsx` — Added "Admin Panel" link to sidebar (super_admin only)
+
+**Admin Dashboard Features:**
+- **Platform Overview:** Total orgs, users, active users, departments, plan distribution, recent signups, platform health metrics
+- **Organization Management:** List all orgs with search, view/edit org settings (name, plan, max employees), view member list
+- **User Management:** Cross-org user listing with pagination, search by name/email, filter by role, change user roles, activate/deactivate users
+- **Audit Logs:** Platform-wide audit trail across all organizations, filterable by action/entity/actor
+
+**Access Control:**
+- Admin layout enforces `super_admin` role — redirects non-super-admins to `/dashboard`
+- All admin API routes verify super_admin role via Bearer token
+- Admin Panel link only visible in sidebar for super_admin role
+
+---
+
+## Design Decisions
+
+| Decision | Choice |
+|----------|--------|
+| Tenant access | Subdomain (acme.hrapp.com) |
+| Registration | Self-service signup |
+| Billing model | Free tier + paid plans |
+| Branding | Logo + colors only |
+| Scale target | 10-50 organizations |
+| Default org UUID | `00000000-0000-0000-0000-000000000001` |
+| super_admin | Bypasses all org restrictions (platform admin) |
+
+---
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/20260725300000_add_multi_tenancy.sql` | Multi-tenancy migration |
+| `supabase/migrations/20260725400000_add_invitations_and_registration.sql` | Invitations & registration migration |
+| `supabase/migrations/20260725500000_add_logo_storage.sql` | Logo storage bucket migration |
+| `supabase/migrations/20260725600000_add_billing_subscriptions.sql` | Billing & subscriptions migration |
+| `supabase/migrations/20260725700000_add_work_schedules_and_payroll.sql` | Work schedules & payroll migration |
+| `lib/supabase.ts` | All TypeScript types (Organization, Profile, Invitation, etc.) |
+| `lib/organizations.ts` | Organization service functions |
+| `lib/invitations.ts` | Invitation service functions |
+| `hooks/use-organization.ts` | useOrganization() hook for org_id access |
+| `lib/tenant-context.tsx` | Tenant context provider |
+| `lib/auth-context.tsx` | Auth context (includes organization) |
+| `middleware.ts` | Subdomain detection middleware |
+| `app/layout.tsx` | Root layout (AuthProvider + TenantProvider) |
+| `app/(app)/layout.tsx` | Dashboard layout (dynamic branding) |
+| `app/login/page.tsx` | Login page (dynamic branding) |
+| `app/register/page.tsx` | Registration page (multi-step form) |
+| `app/accept-invite/page.tsx` | Invitation acceptance page |
+| `app/onboarding/page.tsx` | Post-registration onboarding wizard |
+| `app/api/register/route.ts` | Registration API route |
+| `app/api/invitations/route.ts` | Invitations API route |
+| `components/invite-members-dialog.tsx` | Reusable invite dialog component |
+| `components/branding-tab.tsx` | Branding settings tab (logo, color, name) |
+| `components/dynamic-brand-styles.tsx` | Runtime CSS variable injection |
+| `hooks/use-branding.ts` | useBranding() hook for dynamic colors |
+| `supabase/migrations/20260725600000_add_billing_subscriptions.sql` | Billing & subscriptions migration |
+| `lib/billing.ts` | Billing service, plan types, subscription CRUD |
+| `app/(app)/billing/page.tsx` | Billing page (current plan, usage, invoices) |
+| `app/(app)/billing/upgrade/page.tsx` | Pricing page with plan comparison |
+| `app/api/employees/route.ts` | Employee API (org-scoped, plan limits enforced) |
+| `app/api/departments/route.ts` | Department API (org-scoped) |
+| `lib/payroll.ts` | Payroll service, schedule CRUD, payslip generation |
+| `app/(app)/payroll/page.tsx` | Payroll dashboard |
+| `app/(app)/payroll/runs/new/page.tsx` | Create payroll run page |
+| `app/(app)/payroll/runs/[id]/page.tsx` | Payroll run detail page |
+
+---
+
+## Notes
+
+- All existing data assigned to default org "VCGL ONE"
+- RLS policies enforce org isolation at database level
+- super_admin role has cross-org access for platform management
+- Tenant context works in both development (cookie) and production (subdomain)

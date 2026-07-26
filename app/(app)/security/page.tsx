@@ -16,16 +16,18 @@ export default function SecurityPage() {
 
   useEffect(() => {
     async function loadLogs() {
+      if (!profile?.org_id) return;
       const { data } = await getSupabase()
         .from('audit_logs')
         .select('*, profiles(*)')
+        .eq('org_id', profile.org_id)
         .order('created_at', { ascending: false })
         .limit(200);
       setLogs(data ?? []);
       setLoading(false);
     }
     loadLogs();
-  }, []);
+  }, [profile?.org_id]);
 
   if (!profile) return null;
 

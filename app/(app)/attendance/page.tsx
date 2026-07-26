@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { formatDuration, attendanceStatusFromDuration, getAutoCheckoutTime, shouldAutoCheckout } from '@/lib/utils';
-import { getSupabase, AttendanceRecord, Profile } from '@/lib/supabase';
+import { getSupabase, AttendanceRecord, Profile, WorkSchedule } from '@/lib/supabase';
+import { getWorkSchedule } from '@/lib/payroll';
 import { reverseGeocode } from '@/lib/geocode';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ export default function AttendancePage() {
   const [liveDuration, setLiveDuration] = useState('00:00:00');
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
+  const [schedule, setSchedule] = useState<WorkSchedule | null>(null);
 
   const isManager = profile?.role === 'manager';
   const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
@@ -45,9 +47,12 @@ export default function AttendancePage() {
     if (!shouldAutoCheckout(record.check_in, record.check_out)) return record;
 
     const checkoutAt = getAutoCheckoutTime(record.check_in);
+    const status = schedule
+      ? attendanceStatusFromDuration(record.check_in, checkoutAt, schedule.work_hours, schedule.start_time, schedule.grace_minutes)
+      : 'absent';
     const { data } = await getSupabase()
       .from('attendance_records')
-      .update({ check_out: checkoutAt, status: 'absent' })
+      .update({ check_out: checkoutAt, status })
       .eq('id', record.id)
       .select('*')
       .maybeSingle();
@@ -57,6 +62,7 @@ export default function AttendancePage() {
 
   async function loadMyRecords() {
     if (!profile) return;
+    const orgId = profile.org_id;
     const startDate = new Date(year, month, 1).toISOString().split('T')[0];
     const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
@@ -64,6 +70,7 @@ export default function AttendancePage() {
       .from('attendance_records')
       .select('*')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: false });
@@ -74,6 +81,7 @@ export default function AttendancePage() {
       .from('attendance_records')
       .select('*')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .eq('date', today)
       .maybeSingle();
 
@@ -83,11 +91,13 @@ export default function AttendancePage() {
 
   async function loadTeamRecords() {
     if (!profile || (!isManager && !isHr)) return;
+    const orgId = profile.org_id;
     const today = new Date().toISOString().split('T')[0];
 
     const { data: team } = await getSupabase()
       .from('profiles')
       .select('*')
+      .eq('org_id', orgId)
       .eq(isManager ? 'manager_id' : 'is_active', isManager ? profile.id : true)
       .eq('is_active', true);
 
@@ -99,6 +109,7 @@ export default function AttendancePage() {
     const { data: atts } = await getSupabase()
       .from('attendance_records')
       .select('*')
+      .eq('org_id', orgId)
       .eq('date', today)
       .in('employee_id', team.map((t) => t.id));
 
@@ -118,6 +129,9 @@ export default function AttendancePage() {
 
   useEffect(() => {
     loadMyRecords();
+    if (profile?.org_id) {
+      getWorkSchedule(profile.org_id).then(setSchedule);
+    }
   }, [profile, month, year]);
 
   useEffect(() => {
@@ -167,6 +181,7 @@ export default function AttendancePage() {
       .from('attendance_records')
       .upsert({
         employee_id: profile.id,
+        org_id: profile.org_id,
         date: today,
         check_in: now,
         check_in_lat: location.lat,
@@ -193,7 +208,13 @@ export default function AttendancePage() {
 
     const locationName = await reverseGeocode(location.lat, location.lng);
     const now = new Date().toISOString();
-    const status = attendanceStatusFromDuration(todayRecord.check_in, now);
+    const status = attendanceStatusFromDuration(
+      todayRecord.check_in,
+      now,
+      schedule?.work_hours ?? 8,
+      schedule?.start_time ?? '09:00',
+      schedule?.grace_minutes ?? 15
+    );
 
     const { data } = await getSupabase()
       .from('attendance_records')

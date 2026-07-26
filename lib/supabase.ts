@@ -20,6 +20,19 @@ export function getSupabase(): SupabaseClient {
 
 export type Role = 'employee' | 'manager' | 'hr_admin' | 'super_admin';
 
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  primary_color: string;
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  max_employees: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   employee_id: string | null;
@@ -28,6 +41,7 @@ export interface Profile {
   nick_name: string | null;
   email: string;
   role: Role;
+  org_id: string;
   job_title: string | null;
   phone: string | null;
   avatar_url: string | null;
@@ -51,6 +65,7 @@ export interface Profile {
   work_experience: WorkExperience[] | null;
   education_details: EducationDetail[] | null;
   dependents: Dependent[] | null;
+  organization?: Organization;
 }
 
 export interface WorkExperience {
@@ -95,6 +110,7 @@ export interface AttendanceRecord {
 
 export interface LeaveType {
   id: string;
+  org_id: string;
   name: string;
   description: string | null;
   days_allowed: number;
@@ -106,6 +122,7 @@ export interface LeaveBalance {
   id: string;
   employee_id: string;
   leave_type_id: string;
+  org_id: string;
   year: number;
   total_days: number;
   used_days: number;
@@ -117,6 +134,7 @@ export interface LeaveRequest {
   id: string;
   employee_id: string;
   leave_type_id: string;
+  org_id: string;
   start_date: string;
   end_date: string;
   days_requested: number;
@@ -134,6 +152,7 @@ export interface LeaveRequest {
 export interface AuditLog {
   id: string;
   actor_id: string | null;
+  org_id: string;
   action: string;
   entity: string;
   entity_id: string | null;
@@ -152,10 +171,103 @@ export type NotificationType =
 export interface NotificationRecord {
   id: string;
   user_id: string;
+  org_id: string;
   title: string;
   body: string;
   type: NotificationType;
   metadata: Record<string, unknown>;
   read_at: string | null;
   created_at: string;
+}
+
+export interface Invitation {
+  id: string;
+  org_id: string;
+  email: string;
+  role: Role;
+  invited_by: string;
+  token: string;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  invited_by_name?: string;
+}
+
+// ─── Payroll & Work Schedule Types ──────────────────────────────────────────
+
+export interface WorkSchedule {
+  id: string;
+  org_id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  grace_minutes: number;
+  work_hours: number;
+  break_minutes: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmployeeCompensation {
+  id: string;
+  employee_id: string;
+  org_id: string;
+  base_salary: number;
+  currency: string;
+  pay_frequency: 'hourly' | 'weekly' | 'biweekly' | 'monthly';
+  effective_date: string;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PayrollRun {
+  id: string;
+  org_id: string;
+  period_start: string;
+  period_end: string;
+  status: 'draft' | 'processing' | 'completed' | 'paid' | 'canceled';
+  total_gross: number;
+  total_deductions: number;
+  total_net: number;
+  employee_count: number;
+  notes: string | null;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payslip {
+  id: string;
+  payroll_run_id: string;
+  employee_id: string;
+  org_id: string;
+  period_start: string;
+  period_end: string;
+  base_pay: number;
+  overtime_hours: number;
+  overtime_pay: number;
+  bonuses: number;
+  allowances: number;
+  gross_pay: number;
+  tax_deduction: number;
+  insurance_deduction: number;
+  pension_deduction: number;
+  other_deductions: number;
+  total_deductions: number;
+  net_pay: number;
+  days_worked: number;
+  days_present: number;
+  days_absent: number;
+  days_late: number;
+  hours_worked: number;
+  status: 'draft' | 'approved' | 'paid' | 'void';
+  created_at: string;
+  updated_at: string;
+  profiles?: Profile;
 }

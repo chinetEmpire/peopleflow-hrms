@@ -47,10 +47,11 @@ export default function TimeOffPage() {
   const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
   async function loadData() {
-    if (!profile) return;
+    if (!profile || !profile.org_id) return;
+    const orgId = profile.org_id;
 
     // Leave types
-    const { data: types, error: typesError } = await getSupabase().from('leave_types').select('*').eq('is_active', true);
+    const { data: types, error: typesError } = await getSupabase().from('leave_types').select('*').eq('org_id', orgId).eq('is_active', true);
     if (typesError) {
       console.error('Failed to load leave types', typesError);
       toast.error('Unable to load leave types');
@@ -64,6 +65,7 @@ export default function TimeOffPage() {
       .from('leave_requests')
       .select('id, employee_id, leave_type_id, start_date, end_date, days_requested, reason, status, approved_by, approved_at, rejection_reason, created_at, leave_types(name, color)')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .order('created_at', { ascending: false });
 
     if (reqsError) {
@@ -79,6 +81,7 @@ export default function TimeOffPage() {
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .eq('year', new Date().getFullYear());
     if (balsError) {
       console.error('Failed to load leave balances', balsError);
@@ -93,6 +96,7 @@ export default function TimeOffPage() {
       const { data: pending, error: pendingError } = await getSupabase()
         .from('leave_requests')
         .select('*, leave_types(*), profiles!employee_id(id, first_name, last_name)')
+        .eq('org_id', orgId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
@@ -131,6 +135,7 @@ export default function TimeOffPage() {
 
       const { data: insertedRequest, error: insertError } = await getSupabase().from('leave_requests').insert({
         employee_id: profile.id,
+        org_id: profile.org_id,
         leave_type_id: form.leave_type_id,
         start_date: form.start_date,
         end_date: form.end_date,
@@ -149,7 +154,7 @@ export default function TimeOffPage() {
           .eq('id', bal.id);
       }
 
-      await logAction(profile.id, 'create', 'leave_request', undefined, { days, type: form.leave_type_id });
+      await logAction(profile.id, 'create', 'leave_request', undefined, { days, type: form.leave_type_id }, profile.org_id);
       toast.success('Leave request submitted');
       setDialogOpen(false);
       setForm({ leave_type_id: '', start_date: '', end_date: '', reason: '' });
@@ -195,7 +200,7 @@ export default function TimeOffPage() {
           .eq('id', bal.id);
       }
 
-      await logAction(profile.id, 'approve', 'leave_request', req.id);
+      await logAction(profile.id, 'approve', 'leave_request', req.id, undefined, profile.org_id);
       toast.success('Leave request approved');
       await loadData();
     } catch (err) {
@@ -235,7 +240,7 @@ export default function TimeOffPage() {
           .eq('id', bal.id);
       }
 
-      await logAction(profile.id, 'reject', 'leave_request', req.id, { reason });
+      await logAction(profile.id, 'reject', 'leave_request', req.id, { reason }, profile.org_id);
       toast.success('Leave request rejected');
       await loadData();
     } catch (err) {

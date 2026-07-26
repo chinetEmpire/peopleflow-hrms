@@ -7,11 +7,13 @@ export async function logAction(
   action: string,
   entity: string,
   entityId?: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
+  orgId?: string
 ) {
   try {
     await getSupabase().from('audit_logs').insert({
       actor_id: actorId,
+      org_id: orgId,
       action,
       entity,
       entity_id: entityId,

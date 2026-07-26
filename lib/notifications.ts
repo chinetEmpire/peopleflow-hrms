@@ -6,10 +6,11 @@ export async function createNotification(
   body: string,
   type: NotificationType,
   metadata: Record<string, unknown> = {},
+  orgId?: string
 ): Promise<NotificationRecord | null> {
   const { data, error } = await getSupabase()
     .from('notifications')
-    .insert({ user_id: userId, title, body, type, metadata })
+    .insert({ user_id: userId, org_id: orgId, title, body, type, metadata })
     .select('*')
     .single();
 
@@ -20,11 +21,15 @@ export async function createNotification(
   return data;
 }
 
-export async function getNotifications(userId: string): Promise<NotificationRecord[]> {
-  const { data, error } = await getSupabase()
+export async function getNotifications(userId: string, orgId?: string): Promise<NotificationRecord[]> {
+  let query = getSupabase()
     .from('notifications')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', userId);
+
+  if (orgId) query = query.eq('org_id', orgId);
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -35,12 +40,16 @@ export async function getNotifications(userId: string): Promise<NotificationReco
   return data ?? [];
 }
 
-export async function getUnreadCount(userId: string): Promise<number> {
-  const { count, error } = await getSupabase()
+export async function getUnreadCount(userId: string, orgId?: string): Promise<number> {
+  let query = getSupabase()
     .from('notifications')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId)
     .is('read_at', null);
+
+  if (orgId) query = query.eq('org_id', orgId);
+
+  const { count, error } = await query;
 
   if (error) {
     console.error('Failed to get unread count:', error);

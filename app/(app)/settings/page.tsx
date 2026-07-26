@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getSupabase, LeaveType, LeaveBalance, Profile, Role } from '@/lib/supabase';
 import { logAction } from '@/lib/audit';
+import { getWorkSchedule, updateWorkSchedule, getAllCompensation, upsertCompensation, formatCurrency, getPayFrequencyLabel } from '@/lib/payroll';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,9 +22,10 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import {
-  User, Plus, Pencil, Trash2, Clock, Camera, Briefcase, Home, Wallet, GraduationCap, Users as UsersIcon, ShieldCheck,
+  User, Plus, Pencil, Trash2, Clock, Camera, Briefcase, Home, Wallet, GraduationCap, Users as UsersIcon, ShieldCheck, Loader2,
 } from 'lucide-react';
 import { CreatableSelect } from '@/components/creatable-select';
+import { BrandingTab } from '@/components/branding-tab';
 
 const EMPLOYMENT_TYPES = [
   { value: 'full_time', label: 'Full Time' },
@@ -159,7 +161,8 @@ export default function SettingsPage() {
   }, [profile]);
 
   async function loadLeaveTypes() {
-    const { data } = await getSupabase().from('leave_types').select('*').order('name');
+    if (!profile?.org_id) return;
+    const { data } = await getSupabase().from('leave_types').select('*').eq('org_id', profile.org_id).order('name');
     setLeaveTypes(data ?? []);
   }
 
@@ -172,7 +175,8 @@ export default function SettingsPage() {
   }, [profile]);
 
   async function loadEmployees() {
-    const { data } = await getSupabase().from('profiles').select('*').eq('is_active', true).order('first_name');
+    if (!profile?.org_id) return;
+    const { data } = await getSupabase().from('profiles').select('*').eq('org_id', profile.org_id).eq('is_active', true).order('first_name');
     setEmployees(data ?? []);
     if (data && data.length > 0) {
       setSelectedEmployeeId((prev) => prev || data[0].id);
@@ -180,9 +184,11 @@ export default function SettingsPage() {
   }
 
   async function loadManagers() {
+    if (!profile?.org_id) return;
     const { data } = await getSupabase()
       .from('profiles')
       .select('id, first_name, last_name, role')
+      .eq('org_id', profile.org_id)
       .in('role', ['manager', 'hr_admin', 'super_admin'])
       .eq('is_active', true);
     setManagers((data as Profile[]) ?? []);
@@ -195,10 +201,12 @@ export default function SettingsPage() {
   }, [selectedEmployeeId, selectedYear]);
 
   async function loadEmployeeBalances(employeeId: string, year: number) {
+    if (!profile?.org_id) return;
     const { data } = await getSupabase()
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', employeeId)
+      .eq('org_id', profile.org_id)
       .eq('year', year);
     setEmployeeBalances(data ?? []);
   }
@@ -249,6 +257,7 @@ export default function SettingsPage() {
         const payload = {
           employee_id: selectedEmployeeId,
           leave_type_id: bal.leave_type_id,
+          org_id: profile?.org_id,
           year: selectedYear,
           total_days: bal.total_days,
           used_days: bal.used_days,
@@ -375,7 +384,7 @@ export default function SettingsPage() {
           })
           .eq('id', editingLt.id);
         if (error) throw error;
-        await logAction(profile.id, 'update', 'leave_type', editingLt.id, { name: ltForm.name });
+        await logAction(profile.id, 'update', 'leave_type', editingLt.id, { name: ltForm.name }, profile.org_id);
         toast.success('Leave type updated');
       } else {
         const { error } = await getSupabase().from('leave_types').insert({
@@ -383,9 +392,10 @@ export default function SettingsPage() {
           description: ltForm.description || null,
           days_allowed: ltForm.days_allowed,
           color: ltForm.color,
+          org_id: profile?.org_id,
         });
         if (error) throw error;
-        await logAction(profile.id, 'create', 'leave_type', undefined, { name: ltForm.name });
+        await logAction(profile.id, 'create', 'leave_type', undefined, { name: ltForm.name }, profile.org_id);
         toast.success('Leave type created');
       }
       setLtDialog(false);
@@ -428,8 +438,11 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile">
         <TabsList className="bg-white rounded-lg border border-border/50 flex overflow-x-auto">
           <TabsTrigger value="profile">My Profile</TabsTrigger>
+          {isHr && <TabsTrigger value="branding">Branding</TabsTrigger>}
           {isHr && <TabsTrigger value="leave-types">Leave Types</TabsTrigger>}
           {isHr && <TabsTrigger value="leave-balances">Leave Customization</TabsTrigger>}
+          {isHr && <TabsTrigger value="work-schedule">Work Schedule</TabsTrigger>}
+          {isHr && <TabsTrigger value="compensation">Compensation</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
@@ -585,6 +598,7 @@ export default function SettingsPage() {
                       value={profileForm.department}
                       onChange={(v) => setProfileForm({ ...profileForm, department: v })}
                       table="departments"
+                      orgId={profile?.org_id}
                       placeholder="Select or create department..."
                     />
                   ) : (
@@ -815,6 +829,12 @@ export default function SettingsPage() {
         </TabsContent>
 
         {isHr && (
+          <TabsContent value="branding">
+            <BrandingTab />
+          </TabsContent>
+        )}
+
+        {isHr && (
           <TabsContent value="leave-types">
             <Card className="rounded-xl border-0 bg-white vcgl-shadow">
               <CardHeader className="pb-3">
@@ -960,6 +980,20 @@ export default function SettingsPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {/* ── Work Schedule Tab ────────────────────────────────────── */}
+        {isHr && (
+          <TabsContent value="work-schedule">
+            <WorkScheduleTab orgId={profile?.org_id} />
+          </TabsContent>
+        )}
+
+        {/* ── Compensation Tab ─────────────────────────────────────── */}
+        {isHr && (
+          <TabsContent value="compensation">
+            <CompensationTab orgId={profile?.org_id} />
           </TabsContent>
         )}
       </Tabs>
@@ -1194,5 +1228,244 @@ function ProfileSelect({
         </Select>
       )}
     </div>
+  );
+}
+
+// ─── Work Schedule Tab ──────────────────────────────────────────────────────
+
+function WorkScheduleTab({ orgId }: { orgId?: string }) {
+  const [schedule, setSchedule] = useState({ start_time: '09:00', end_time: '17:00', grace_minutes: 15, work_hours: 8, break_minutes: 60 });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!orgId) return;
+    getWorkSchedule(orgId).then((s) => {
+      if (s) {
+        setSchedule({
+          start_time: s.start_time,
+          end_time: s.end_time,
+          grace_minutes: s.grace_minutes,
+          work_hours: s.work_hours,
+          break_minutes: s.break_minutes,
+        });
+      }
+      setLoading(false);
+    });
+  }, [orgId]);
+
+  async function handleSave() {
+    if (!orgId) return;
+    setSaving(true);
+    await updateWorkSchedule(orgId, schedule);
+    toast.success('Work schedule updated');
+    setSaving(false);
+  }
+
+  if (loading) return <Loader2 className="h-6 w-6 animate-spin text-[#0e3a94] mx-auto mt-8" />;
+
+  return (
+    <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+      <CardContent className="p-6 space-y-5">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
+            <Clock className="h-5 w-5 text-[#032364]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-[#051536]">Work Schedule</h3>
+            <p className="text-xs text-muted-foreground">Configure standard work hours and attendance rules</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Start Time</Label>
+            <Input type="time" value={schedule.start_time} onChange={(e) => setSchedule({ ...schedule, start_time: e.target.value })} className="rounded-lg" />
+          </div>
+          <div className="space-y-2">
+            <Label>End Time</Label>
+            <Input type="time" value={schedule.end_time} onChange={(e) => setSchedule({ ...schedule, end_time: e.target.value })} className="rounded-lg" />
+          </div>
+          <div className="space-y-2">
+            <Label>Work Hours per Day</Label>
+            <Input type="number" min={1} max={24} step={0.5} value={schedule.work_hours} onChange={(e) => setSchedule({ ...schedule, work_hours: parseFloat(e.target.value) || 8 })} className="rounded-lg" />
+          </div>
+          <div className="space-y-2">
+            <Label>Grace Period (minutes)</Label>
+            <Input type="number" min={0} max={120} value={schedule.grace_minutes} onChange={(e) => setSchedule({ ...schedule, grace_minutes: parseInt(e.target.value) || 0 })} className="rounded-lg" />
+          </div>
+          <div className="space-y-2">
+            <Label>Break Duration (minutes)</Label>
+            <Input type="number" min={0} max={240} value={schedule.break_minutes} onChange={(e) => setSchedule({ ...schedule, break_minutes: parseInt(e.target.value) || 0 })} className="rounded-lg" />
+          </div>
+        </div>
+
+        <div className="p-3 rounded-lg bg-[#f8fafc] border border-[#e2e8f0]">
+          <p className="text-xs text-muted-foreground">
+            Employees checking in after <strong>{schedule.start_time}</strong> + {schedule.grace_minutes} min grace period will be marked as <strong>late</strong>.
+            Working less than {schedule.work_hours} hours counts as <strong>half day</strong>.
+          </p>
+        </div>
+
+        <Button onClick={handleSave} disabled={saving} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90">
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Save Schedule
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Compensation Tab ───────────────────────────────────────────────────────
+
+function CompensationTab({ orgId }: { orgId?: string }) {
+  const [employees, setEmployees] = useState<(Profile & { compensation?: { base_salary: number; currency: string; pay_frequency: string } | null })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editEmployee, setEditEmployee] = useState<string | null>(null);
+  const [compForm, setCompForm] = useState({ base_salary: '', currency: 'USD', pay_frequency: 'monthly' });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!orgId) return;
+    async function load() {
+      const { data: emps } = await getSupabase()
+        .from('profiles')
+        .select('*')
+        .eq('org_id', orgId!)
+        .eq('is_active', true)
+        .order('first_name');
+
+      const compData = await getAllCompensation(orgId!);
+      const compMap = new Map(compData.map((c) => [c.employee_id, c]));
+
+      setEmployees((emps as Profile[] || []).map((e) => ({
+        ...e,
+        compensation: compMap.get(e.id) ? { base_salary: compMap.get(e.id)!.base_salary, currency: compMap.get(e.id)!.currency, pay_frequency: compMap.get(e.id)!.pay_frequency } : null,
+      })));
+      setLoading(false);
+    }
+    load();
+  }, [orgId]);
+
+  async function handleSaveComp() {
+    if (!editEmployee || !orgId) return;
+    setSaving(true);
+    const salary = parseFloat(compForm.base_salary);
+    if (isNaN(salary) || salary < 0) {
+      toast.error('Please enter a valid salary');
+      setSaving(false);
+      return;
+    }
+    const result = await upsertCompensation(editEmployee, orgId, salary, compForm.currency, compForm.pay_frequency as 'hourly' | 'weekly' | 'biweekly' | 'monthly');
+    if (result) {
+      toast.success('Compensation updated');
+      setEmployees((prev) => prev.map((e) => e.id === editEmployee ? { ...e, compensation: { base_salary: salary, currency: compForm.currency, pay_frequency: compForm.pay_frequency } } : e));
+    } else {
+      toast.error('Failed to update compensation');
+    }
+    setSaving(false);
+    setEditEmployee(null);
+  }
+
+  if (loading) return <Loader2 className="h-6 w-6 animate-spin text-[#0e3a94] mx-auto mt-8" />;
+
+  return (
+    <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
+            <Wallet className="h-5 w-5 text-[#032364]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-[#051536]">Employee Compensation</h3>
+            <p className="text-xs text-muted-foreground">Set base salary and pay frequency for payroll calculation</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {employees.map((emp) => (
+            <div key={emp.id} className="flex items-center justify-between p-3 rounded-lg border border-[#e2e8f0]">
+              <div>
+                <p className="text-sm font-medium text-[#051536]">{emp.first_name} {emp.last_name}</p>
+                <p className="text-xs text-muted-foreground">{emp.employee_id || emp.email}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {emp.compensation ? (
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-[#051536]">{formatCurrency(emp.compensation.base_salary, emp.compensation.currency)}</p>
+                    <p className="text-xs text-muted-foreground">{getPayFrequencyLabel(emp.compensation.pay_frequency)}</p>
+                  </div>
+                ) : (
+                  <span className="text-xs text-amber-600">Not set</span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setEditEmployee(emp.id);
+                    setCompForm({
+                      base_salary: emp.compensation?.base_salary?.toString() || '',
+                      currency: emp.compensation?.currency || 'USD',
+                      pay_frequency: emp.compensation?.pay_frequency || 'monthly',
+                    });
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editEmployee} onOpenChange={(o) => !o && setEditEmployee(null)}>
+          <DialogContent className="max-w-md w-[calc(100vw-2rem)]">
+            <DialogHeader>
+              <DialogTitle>Set Compensation</DialogTitle>
+              <DialogDescription>Configure base salary and pay frequency</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>Base Salary *</Label>
+                <Input type="number" min={0} step={0.01} value={compForm.base_salary} onChange={(e) => setCompForm({ ...compForm, base_salary: e.target.value })} className="rounded-lg" placeholder="e.g., 5000" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Select value={compForm.currency} onValueChange={(v) => setCompForm({ ...compForm, currency: v })}>
+                    <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NGN">NGN (₦)</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="GBP">GBP (£)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Pay Frequency</Label>
+                  <Select value={compForm.pay_frequency} onValueChange={(v) => setCompForm({ ...compForm, pay_frequency: v })}>
+                    <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditEmployee(null)}>Cancel</Button>
+              <Button onClick={handleSaveComp} disabled={saving} className="bg-[#032364] hover:bg-[#032364]/90">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }

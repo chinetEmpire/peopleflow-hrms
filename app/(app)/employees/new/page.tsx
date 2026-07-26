@@ -165,13 +165,15 @@ function AddEmployeeForm() {
   const [depDialog, setDepDialog] = useState<{ open: boolean; data: Dependent; index: number | null }>({ open: false, data: emptyDep, index: null });
 
   useEffect(() => {
+    if (!profile?.org_id) return;
     getSupabase()
       .from('profiles')
       .select('id,first_name,last_name,role')
+      .eq('org_id', profile.org_id)
       .in('role', ['manager', 'hr_admin', 'super_admin'])
       .eq('is_active', true)
       .then(({ data }) => setManagers((data as Profile[]) ?? []));
-  }, []);
+  }, [profile?.org_id]);
 
   useEffect(() => {
     if (!editId) return;
@@ -180,6 +182,7 @@ function AddEmployeeForm() {
       .from('profiles')
       .select('*')
       .eq('id', editId)
+      .eq('org_id', profile?.org_id)
       .single()
       .then(({ data, error }) => {
         if (error || !data) {
@@ -419,6 +422,7 @@ function AddEmployeeForm() {
                 value={form.department}
                 onChange={(v) => update('department', v)}
                 table="departments"
+                orgId={profile?.org_id}
                 placeholder="Select or create department..."
               />
             </div>

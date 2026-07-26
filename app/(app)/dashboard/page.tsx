@@ -61,7 +61,8 @@ export default function DashboardPage() {
   };
 
   async function loadData() {
-    if (!profile) return;
+    if (!profile || !profile.org_id) return;
+    const orgId = profile.org_id;
     const today = new Date().toISOString().split('T')[0];
 
     // Today's attendance
@@ -69,6 +70,7 @@ export default function DashboardPage() {
       .from('attendance_records')
       .select('*')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .eq('date', today)
       .maybeSingle();
     setTodayRecord(await reconcileAttendanceRecord(att));
@@ -78,6 +80,7 @@ export default function DashboardPage() {
       .from('leave_requests')
       .select('id, employee_id, leave_type_id, start_date, end_date, days_requested, reason, status, approved_by, approved_at, rejection_reason, created_at, leave_types(name, color)')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .order('created_at', { ascending: false })
       .limit(5);
     if (leavesError) {
@@ -92,13 +95,14 @@ export default function DashboardPage() {
       .from('leave_balances')
       .select('*, leave_types(*)')
       .eq('employee_id', profile.id)
+      .eq('org_id', orgId)
       .eq('year', new Date().getFullYear());
     setBalances(bals ?? []);
 
     if (isHr) {
-      const { count } = await getSupabase().from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true);
-      const { count: present } = await getSupabase().from('attendance_records').select('*', { count: 'exact', head: true }).eq('date', today).not('check_in', 'is', null);
-      const { count: pending } = await getSupabase().from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      const { count } = await getSupabase().from('profiles').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('is_active', true);
+      const { count: present } = await getSupabase().from('attendance_records').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('date', today).not('check_in', 'is', null);
+      const { count: pending } = await getSupabase().from('leave_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending');
       setStats({
         totalEmployees: count ?? 0,
         presentToday: present ?? 0,
@@ -111,6 +115,7 @@ export default function DashboardPage() {
     const { data: birthdayRows } = await getSupabase()
       .from('profiles')
       .select('*')
+      .eq('org_id', orgId)
       .eq('is_active', true)
       .not('date_of_birth', 'is', null);
     setBirthdays(
@@ -131,6 +136,7 @@ export default function DashboardPage() {
       const { data: team } = await getSupabase()
         .from('profiles')
         .select('*')
+        .eq('org_id', orgId)
         .eq('manager_id', profile.id)
         .eq('is_active', true);
       setTeamMembers(team ?? []);
@@ -184,6 +190,7 @@ export default function DashboardPage() {
       .from('attendance_records')
       .upsert({
         employee_id: profile.id,
+        org_id: profile.org_id,
         date: today,
         check_in: now,
         check_in_lat: location.lat,

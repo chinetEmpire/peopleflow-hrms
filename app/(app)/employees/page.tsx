@@ -26,7 +26,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Search, Pencil, Trash2, Users, Mail, Phone, Briefcase, X, LayoutGrid, Table } from 'lucide-react';
+import { InviteMembersDialog } from '@/components/invite-members-dialog';
+import { UserPlus, Search, Pencil, Trash2, Users, Mail, Phone, Briefcase, X, LayoutGrid, Table, UserCheck } from 'lucide-react';
 import {
   Table as TableComponent,
   TableHeader,
@@ -59,14 +60,17 @@ export default function EmployeesPage() {
   });
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
   async function loadEmployees() {
+    if (!profile?.org_id) return;
     setLoading(true);
     const { data } = await getSupabase()
       .from('profiles')
       .select('*')
+      .eq('org_id', profile.org_id)
       .order('created_at', { ascending: false });
     setEmployees(data ?? []);
     const mgrs = (data ?? []).filter((e) => e.role === 'manager' || e.role === 'hr_admin');
@@ -75,8 +79,8 @@ export default function EmployeesPage() {
   }
 
   useEffect(() => {
-    loadEmployees();
-  }, []);
+    if (profile?.org_id) loadEmployees();
+  }, [profile?.org_id]);
 
   function openAdd() {
     setForm({
@@ -174,6 +178,12 @@ export default function EmployeesPage() {
           <UserPlus className="mr-2 h-4 w-4" />
           Add new employee
         </Button>
+        {isHr && (
+          <Button onClick={() => setInviteDialogOpen(true)} variant="outline" className="rounded-lg w-full sm:w-auto">
+            <UserCheck className="mr-2 h-4 w-4" />
+            Invite member
+          </Button>
+        )}
       </div>
 
       {/* Search & View Toggle */}
@@ -425,6 +435,8 @@ export default function EmployeesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <InviteMembersDialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen} />
     </div>
   );
 }

@@ -23,9 +23,40 @@ export function attendanceDurationMs(checkIn: string, checkOut?: string | null) 
   return Math.max(0, end - start);
 }
 
-export function attendanceStatusFromDuration(checkIn: string, checkOut: string) {
+/**
+ * Determine attendance status considering late arrival and work hours.
+ * - late: check_in is after start_time + grace_minutes
+ * - present: worked >= work_hours
+ * - half_day: worked < work_hours but > 0
+ * - absent: no check_in
+ */
+export function attendanceStatusFromDuration(
+  checkIn: string,
+  checkOut: string,
+  workHours: number = 8,
+  startTime: string = '09:00',
+  graceMinutes: number = 15
+): 'present' | 'late' | 'half_day' | 'absent' {
   const duration = attendanceDurationMs(checkIn, checkOut);
-  return duration >= WORK_DAY_MS ? 'present' : 'half_day';
+
+  // Check if late
+  const checkInDate = new Date(checkIn);
+  const [startH, startM] = startTime.split(':').map(Number);
+  const scheduleStart = new Date(checkInDate);
+  scheduleStart.setHours(startH, startM, 0, 0);
+  const graceEnd = new Date(scheduleStart.getTime() + graceMinutes * 60 * 1000);
+
+  const isLate = checkInDate > graceEnd;
+
+  if (duration >= workHours * 60 * 60 * 1000) {
+    return isLate ? 'late' : 'present';
+  }
+
+  if (duration > 0) {
+    return isLate ? 'late' : 'half_day';
+  }
+
+  return 'absent';
 }
 
 export function shouldAutoCheckout(checkIn: string, checkOut?: string | null) {

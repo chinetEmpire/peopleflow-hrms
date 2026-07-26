@@ -76,6 +76,7 @@ export default function ReportsPage() {
       const { data: records, error } = await getSupabase()
         .from('attendance_records')
         .select('*')
+        .eq('org_id', profile.org_id)
         .in('employee_id', teamIds)
         .gte('date', start)
         .lte('date', end)
@@ -112,6 +113,7 @@ export default function ReportsPage() {
       const { data: leaves, error } = await getSupabase()
         .from('leave_requests')
         .select('*, leave_types(*)')
+        .eq('org_id', profile.org_id)
         .in('employee_id', teamIds)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -140,13 +142,15 @@ export default function ReportsPage() {
 
   useEffect(() => {
     async function loadReport() {
-      if (!profile) return;
+      if (!profile || !profile.org_id) return;
+      const orgId = profile.org_id;
 
       let teamIds: string[] = [];
       if (isManager) {
         const { data: team } = await getSupabase()
           .from('profiles')
           .select('*')
+          .eq('org_id', orgId)
           .eq('manager_id', profile.id)
           .eq('is_active', true);
         setEmployees(team ?? []);
@@ -155,6 +159,7 @@ export default function ReportsPage() {
         const { data: all } = await getSupabase()
           .from('profiles')
           .select('*')
+          .eq('org_id', orgId)
           .eq('is_active', true)
           .neq('id', profile.id);
         setEmployees(all ?? []);
@@ -171,6 +176,7 @@ export default function ReportsPage() {
       const { data: atts } = await getSupabase()
         .from('attendance_records')
         .select('*')
+        .eq('org_id', orgId)
         .in('employee_id', teamIds)
         .gte('date', startDate)
         .lte('date', endDate);
@@ -194,6 +200,7 @@ export default function ReportsPage() {
         const { data: mAtts } = await getSupabase()
           .from('attendance_records')
           .select('*')
+          .eq('org_id', orgId)
           .in('employee_id', teamIds)
           .gte('date', ms)
           .lte('date', me);
@@ -207,6 +214,7 @@ export default function ReportsPage() {
       const { data: leaves } = await getSupabase()
         .from('leave_requests')
         .select('*')
+        .eq('org_id', orgId)
         .in('employee_id', teamIds);
       setLeaveStats({
         approved: (leaves ?? []).filter((l) => l.status === 'approved').length,
