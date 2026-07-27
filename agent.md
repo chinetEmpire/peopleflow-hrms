@@ -51,10 +51,11 @@ Implemented or in active progress:
 - Attendance module UI
 - Time-off module UI
 - Reports, settings, and security screens
+- Role-based access control (API, database, and UI layers)
+- Security hardening (rate limiting, input validation, privilege escalation prevention)
 
 Planned next:
 
-- Stronger role-based access enforcement
 - More complete leave workflow
 - Departments and designations
 - Reporting enhancements

@@ -3,7 +3,7 @@
 # Current Project Context
 
 Project Name: HR Management System (HRMS) — SaaS Platform
-Last Updated: July 25, 2026
+Last Updated: July 27, 2026
 Project Status: Active Development — SaaS Transformation In Progress
 
 ---
@@ -65,6 +65,14 @@ The following features are present in the codebase:
 - Multi-tenancy foundation (organizations table, org_id on all tables)
 - Tenant context provider with subdomain detection
 - Dynamic branding (org name, logo, primary color)
+- Subscription & billing with plan enforcement
+- Flutterwave payment integration
+- Payroll management (schedules, compensation, payslips)
+- Super admin platform dashboard (orgs, users, audit logs)
+- Role-based access control enforced at API, database, and UI layers
+- Database triggers preventing role escalation
+- Rate limiting on auth, billing, and webhook endpoints
+- Input validation and mass assignment protection
 
 ---
 
@@ -155,12 +163,17 @@ Current flow:
 
 Authorization is currently enforced in the UI layer through role-based navigation and route access patterns.
 
+Authorization is enforced at three layers:
+- **API layer**: `verifyToken()`, `verifyRole()`, `verifySuperAdmin()` in all API routes
+- **Database layer**: RLS policies scoped by `org_id` and role checks in database functions
+- **Database triggers**: `prevent_role_escalation()` trigger blocks unauthorized role changes on `profiles`
+- **UI layer**: Role-based navigation, conditional rendering, and route guards
+
 ---
 
 # Known Gaps and Technical Debt
 
 - Some business logic still needs to be moved out of page components
-- Employee and role permissions can be made more robust
 - More typed domain models and reusable service helpers would improve maintainability
 - The docs should be updated whenever major features are added or changed
 - Better error handling
@@ -198,7 +211,7 @@ Tasks
 - Build Attendance
 - Build Leave Management
 - Improve Authentication
-- Improve Role Permissions
+- ~~Improve Role Permissions~~ — Completed (Phase 11)
 
 ---
 
@@ -329,3 +342,15 @@ Future updates should be added here whenever significant milestones are reached.
   - Removed ssl: { rejectUnauthorized: false } from departments route
   - Deduplicated 13 Supabase admin client singletons into shared module
 - Progress tracked in PROCESS.md
+
+## 2026-07-27
+
+- Phase 11 Complete: Critical Privilege Escalation Fix
+  - Fixed 6 independent privilege escalation vectors that allowed tenant users to gain super_admin access
+  - Registration endpoint now hardcodes role to `hr_admin` (previously accepted any role from request body)
+  - `handle_new_user()` trigger now whitelists roles (employee, manager, hr_admin only; super_admin blocked)
+  - New `prevent_role_escalation()` database trigger blocks unauthorized role changes on `profiles`
+  - Edge function (`manage-employee`) now validates roles like the API route
+  - Settings page no longer sends `role` directly to Supabase client (removed from client-side update)
+  - `create_organization_with_admin()` function changed to assign `hr_admin` instead of `super_admin`
+  - Downgraded improperly elevated tenant account from super_admin to hr_admin

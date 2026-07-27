@@ -54,7 +54,7 @@ Includes manager capabilities plus:
 
 ## Super Admin
 
-Full system access for administration and sensitive controls.
+Full platform access for cross-organization administration. This role can only be assigned by an existing super_admin — it cannot be self-assigned or promoted to via any other role.
 
 ---
 
@@ -86,10 +86,11 @@ The application currently includes:
 - Settings page
 - Security page
 - Supabase-backed employee management flow
+- Role-based access control (API, database, and UI layers)
+- Security hardening (rate limiting, input validation, privilege escalation prevention)
 
 ## In Progress
 
-- Stronger role-based access enforcement
 - More complete leave workflow behavior
 - Reporting enhancement
 - Better employee data validation and UX

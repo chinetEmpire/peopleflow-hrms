@@ -319,6 +319,43 @@
 
 ---
 
+## Phase 11: Critical Privilege Escalation Fix ✅
+
+**Migration:** `supabase/migrations/20260727140000_fix_role_escalation_vulnerabilities.sql`
+
+**Root Cause:** New tenant accounts were receiving `super_admin` role and could access the platform admin panel, giving them control over the entire SaaS platform (not just their organization).
+
+**Attack Surface — 6 Independent Vectors Found:**
+
+| # | Vector | Severity | Fix |
+|---|--------|----------|-----|
+| 1 | Registration endpoint accepted `role: 'super_admin'` from any authenticated caller | HIGH | Hardcoded role to `'hr_admin'` always |
+| 2 | `handle_new_user()` trigger copied any role from user metadata (no validation) | HIGH | Whitelist: only `employee`, `manager`, `hr_admin` allowed |
+| 3 | Any user could self-promote to `super_admin` via direct Supabase client update (RLS allows self-update) | **CRITICAL** | New `prevent_role_escalation()` database trigger |
+| 4 | Edge function had no role validation (unlike API route) | HIGH | Added `isValidRole()` check + assignment guard |
+| 5 | `create_organization_with_admin()` hardcoded `super_admin` | MEDIUM | Changed to `hr_admin` |
+| 6 | Settings page sent `role` directly to Supabase client (only client-side checks) | HIGH | Removed `role` from client-side update payload |
+
+**Files Modified:**
+- `app/api/register/route.ts` — Role hardcoded to `hr_admin`, no longer accepts `body.role`
+- `supabase/functions/manage-employee/index.ts` — Added `VALID_ROLES` whitelist, role validation, and assignment guard
+- `app/(app)/settings/page.tsx` — Removed `role` from the direct Supabase client update
+
+**New Migration Added:**
+- `20260727140000_fix_role_escalation_vulnerabilities.sql`:
+  - Replaced `handle_new_user()` with role-whitelisting version
+  - Created `prevent_role_escalation()` trigger on `profiles.role` UPDATE
+  - Replaced `create_organization_with_admin()` to use `hr_admin`
+
+**Security Model After Fix:**
+- Only `super_admin` can assign `super_admin` role (via `/api/employees` route)
+- Only `super_admin` or `hr_admin` can assign `hr_admin` role
+- Employees cannot change their own role at all
+- Registration always creates `hr_admin` for new organizations
+- Direct Supabase client calls cannot escalate roles (trigger blocks it)
+
+---
+
 ## Design Decisions
 
 | Decision | Choice |
@@ -377,6 +414,7 @@
 | `app/(app)/billing/success/page.tsx` | Post-payment success/failure page |
 | `lib/supabase-admin.ts` | Shared service-role Supabase client (Phase 10) |
 | `lib/validation.ts` | Shared input validation helpers (Phase 10) |
+| `supabase/migrations/20260727140000_fix_role_escalation_vulnerabilities.sql` | Role escalation fixes (Phase 11) |
 
 ---
 
@@ -389,3 +427,4 @@
 - Auth tokens must be obtained from `useAuth().session.access_token`, not from `localStorage.getItem('supabase.auth.token')` — Supabase stores sessions under a different key
 - All API routes use `service_role` key which bypasses RLS — authorization is enforced at the application layer
 - Security hardening completed — Phase 10. All critical and high severity findings fixed.
+- Privilege escalation fix completed — Phase 11. Only super_admin can grant super_admin access.
