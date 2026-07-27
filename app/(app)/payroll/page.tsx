@@ -21,7 +21,6 @@ import {
   AlertCircle,
   FileText,
   ArrowRight,
-  DollarSign,
   Users,
   TrendingUp,
 } from 'lucide-react';
@@ -109,7 +108,7 @@ export default function PayrollPage() {
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
-                <DollarSign className="h-5 w-5 text-green-600" />
+                 ₦
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Paid</p>
