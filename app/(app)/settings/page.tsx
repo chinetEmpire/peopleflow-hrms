@@ -335,7 +335,6 @@ export default function SettingsPage() {
           hire_date: isHr ? (profileForm.hire_date || null) : profile.hire_date,
           employment_type: isHr ? (profileForm.employment_type || null) : profile.employment_type,
           employment_status: isHr ? (profileForm.employment_status || null) : profile.employment_status,
-          role: isHr ? profileForm.role : profile.role,
           manager_id: isHr ? (profileForm.manager_id || null) : profile.manager_id,
           bank_name: isHr ? (profileForm.bank_name || null) : profile.bank_name,
           bank_account_number: isHr ? (profileForm.bank_account_number || null) : profile.bank_account_number,

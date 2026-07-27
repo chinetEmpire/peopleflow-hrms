@@ -49,6 +49,11 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const action = body.action;
 
+    const VALID_ROLES = ["employee", "manager", "hr_admin"];
+    function isValidRole(r: unknown): r is string {
+      return typeof r === "string" && (VALID_ROLES as readonly string[]).includes(r);
+    }
+
     if (action === "create") {
       const {
         email, password, first_name, last_name, role, employee_id,
@@ -64,12 +69,20 @@ Deno.serve(async (req: Request) => {
         return errorResponse("Missing required fields", 400);
       }
 
+      const finalRole = role || "employee";
+      if (!isValidRole(finalRole)) {
+        return errorResponse("Invalid role", 400);
+      }
+      if ((finalRole === "hr_admin") && callerProfile.role !== "super_admin") {
+        return errorResponse("Only super admins can assign hr_admin role", 403);
+      }
+
       // Create auth user
       const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { first_name, last_name, role: role || "employee" },
+        user_metadata: { first_name, last_name, role: finalRole },
       });
 
       if (authErr) throw authErr;
@@ -83,7 +96,7 @@ Deno.serve(async (req: Request) => {
         last_name,
         nick_name: nick_name || null,
         email,
-        role: role || "employee",
+        role: finalRole,
         job_title: job_title || null,
         phone: phone || null,
         hire_date: hire_date || null,

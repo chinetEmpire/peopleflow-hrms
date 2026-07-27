@@ -61,9 +61,10 @@ export async function POST(req: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Verify caller — self-registration gets hr_admin only
+    // Verify caller — self-registration always gets hr_admin only
+    // Never allow super_admin via self-registration
     const authUser = await verifyToken(req);
-    const role = authUser ? (body.role || 'hr_admin') : 'hr_admin';
+    const role = 'hr_admin';
 
     // Auto-generate slug from org name and ensure uniqueness
     const baseSlug = generateSlug(orgName);
