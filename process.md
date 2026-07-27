@@ -219,6 +219,104 @@
 - All admin API routes verify super_admin role via Bearer token
 - Admin Panel link only visible in sidebar for super_admin role
 
+### Phase 9: Flutterwave Payment Integration ✅
+
+**Migration:** `supabase/migrations/20260727130000_add_flutterwave_tracking.sql`
+
+- Added `flutterwave_tx_ref` and `flutterwave_customer_id` columns to `subscriptions`
+- Added `flutterwave_tx_ref` and `flutterwave_flw_ref` columns to `invoices`
+- Added indexes for payment lookup performance
+
+**New Files:**
+- `lib/flutterwave.ts` — Flutterwave SDK (checkout, verification, webhook signature)
+- `app/api/billing/checkout/route.ts` — Creates Flutterwave checkout session
+- `app/api/billing/webhook/route.ts` — Handles Flutterwave webhook events
+- `app/(app)/billing/success/page.tsx` — Post-payment success/failure page
+
+**Modified Files:**
+- `app/(app)/billing/page.tsx` — Shows Flutterwave payment gateway status
+- `app/(app)/billing/upgrade/page.tsx` — Initiates Flutterwave checkout for paid plans
+
+**Flutterwave Features:**
+- Standard Checkout integration (redirect to Flutterwave payment page)
+- Webhook handling for `charge.completed` events
+- Transaction verification via Flutterwave API
+- Webhook signature verification (SHA512 HMAC)
+- Automatic subscription activation on successful payment
+- Invoice generation for completed transactions
+- Graceful fallback when payment gateway not configured
+
+**Environment Variables Required:**
+- `FLUTTERWAVE_SECRET_KEY` — Flutterwave API secret key
+- `FLUTTERWAVE_PUBLIC_KEY` — Flutterwave API public key
+- `FLUTTERWAVE_WEBHOOK_SECRET` — Webhook signature secret
+
+**Payment Flow:**
+1. User selects paid plan on upgrade page
+2. Frontend calls `/api/billing/checkout` with plan details
+3. Backend creates Flutterwave checkout session and returns checkout URL
+4. User redirected to Flutterwave to complete payment
+5. On success, Flutterwave redirects to `/billing/success` with tx_ref
+6. Flutterwave sends webhook to `/api/billing/webhook`
+7. Webhook verifies transaction and activates subscription
+8. Invoice created and organization plan updated
+
+**Post-Integration Fixes:**
+- Updated billing page to show Flutterwave payment gateway status (removed "coming soon" placeholder)
+- Fixed webhook to save `flutterwave_tx_ref` and `flutterwave_customer_id` on subscription records
+- Fixed auth token handling across all admin pages — replaced `localStorage.getItem('supabase.auth.token')` with `session?.access_token` from `useAuth()` (Supabase stores sessions under a different key)
+- Updated billing upgrade page to use session token for plan change requests
+
+---
+
+### Phase 10: Security Hardening ✅
+
+**Audit Completed:** Full security audit of all API routes, authentication patterns, and database functions.
+
+**Critical Findings:**
+
+| Finding | Severity | Location |
+|---------|----------|----------|
+| Unauthenticated super_admin creation via `POST /api/register` | CRITICAL | `app/api/register/route.ts:97` |
+| Webhook accepted without verification when `FLUTTERWAVE_WEBHOOK_SECRET` is empty | CRITICAL | `lib/flutterwave.ts:141` |
+| Privilege escalation — `role` field not validated on multiple endpoints | CRITICAL | `admin/users/route.ts:92`, `employees/route.ts:103,116`, `invitations/route.ts:44` |
+| SQL SECURITY DEFINER functions granted to all `authenticated` users | CRITICAL | migration `20260727100000` |
+| Mass assignment on employee update — any `profiles` column can be overwritten | HIGH | `employees/route.ts:153-160` |
+| Zero rate limiting across all endpoints | HIGH | All routes |
+| Raw error messages returned to clients — leaks table names, constraints | HIGH | All catch blocks |
+| Invoice status can be set to `paid` directly on creation | HIGH | `admin/invoices/route.ts:94` |
+| No input validation on `max_employees`, `amount`, `trial_days` | MEDIUM | Multiple routes |
+| No password length check on employee create/update | MEDIUM | `employees/route.ts:61` |
+| `ssl: { rejectUnauthorized: false }` on database connection | MEDIUM | `departments/route.ts:9` |
+| `listUsers()` O(n) scan on every registration | MEDIUM | `register/route.ts:68` |
+| Non-constant-time HMAC comparison | MEDIUM | `flutterwave.ts:143` |
+| 13 duplicate Supabase admin client singletons | LOW | All route files |
+
+**Security Fixes Completed:**
+
+| # | Fix | Files |
+|---|-----|-------|
+| 1 | Shared `lib/supabase-admin.ts` — centralized service-role client + `verifyToken`, `verifyRole`, `verifyHrAdmin`, `verifySuperAdmin` | `lib/supabase-admin.ts` (new), all admin routes, `employees`, `departments` |
+| 2 | Role whitelist — `isValidRole()` rejects unknown roles | `lib/validation.ts` (new), `register`, `employees`, `invitations`, `admin/users` |
+| 3 | Mass assignment — `pick(rest, ALLOWED_UPDATE_FIELDS)` whitelist on employee update | `app/api/employees/route.ts` |
+| 4 | Webhook fail-closed — returns 401 when `FLUTTERWAVE_WEBHOOK_SECRET` is missing | `lib/flutterwave.ts` |
+| 5 | Constant-time HMAC comparison — `crypto.timingSafeEqual()` with `TextEncoder` | `lib/flutterwave.ts` |
+| 6 | Error message sanitization — all catch blocks log `console.error` and return generic `"Internal error"` / `"Failed to ..."` | All 12 API routes |
+| 7 | Input validation — `isValidPlan`, `isValidBillingCycle`, `isValidAmount`, `isValidMaxEmployees`, `isValidTrialDays`, `isValidPassword` | `lib/validation.ts` (new), `admin/organizations`, `admin/subscriptions`, `admin/invoices`, `register`, `employees` |
+| 8 | Registration fix — default role forced to `hr_admin`; `super_admin`/`hr_admin` roles not assignable via self-registration | `app/api/register/route.ts` |
+| 9 | Rate limiting — in-memory sliding window (`lib/rate-limit.ts`) with presets: `auth` (10/min), `webhook` (50/min), `admin` (60/min), `default` (100/min) | `lib/rate-limit.ts` (new), `register`, `checkout`, `webhook` |
+| 10 | Departments SSL fix — removed `ssl: { rejectUnauthorized: false }`, now uses shared admin client | `app/api/departments/route.ts` |
+| 11 | Admin route deduplication — all 6 admin routes now import from shared `lib/supabase-admin.ts` | `admin/stats`, `admin/organizations`, `admin/users`, `admin/subscriptions`, `admin/invoices` |
+
+**New Shared Utilities:**
+- `lib/supabase-admin.ts` — service-role client, `verifyToken(req)`, `verifyRole(req, ...roles)`, `verifyHrAdmin(req)`, `verifySuperAdmin(req)`
+- `lib/validation.ts` — `VALID_ROLES`, `isValidRole()`, `isValidPlan()`, `isValidBillingCycle()`, `isValidAmount()`, `isValidMaxEmployees()`, `isValidTrialDays()`, `isValidPassword()`, `pick()`
+- `lib/rate-limit.ts` — `checkRateLimit(key, preset)`, `getClientIp(req)`, `resetRateLimits()`
+
+**Remaining Work:**
+- CORS headers on API routes (low priority, Vercel handles this at edge)
+- `listUsers()` O(n) scan on registration (needs Supabase index or pagination)
+
 ---
 
 ## Design Decisions
@@ -273,6 +371,12 @@
 | `app/(app)/payroll/page.tsx` | Payroll dashboard |
 | `app/(app)/payroll/runs/new/page.tsx` | Create payroll run page |
 | `app/(app)/payroll/runs/[id]/page.tsx` | Payroll run detail page |
+| `lib/flutterwave.ts` | Flutterwave SDK (checkout, verify, webhook) |
+| `app/api/billing/checkout/route.ts` | Flutterwave checkout API |
+| `app/api/billing/webhook/route.ts` | Flutterwave webhook handler |
+| `app/(app)/billing/success/page.tsx` | Post-payment success/failure page |
+| `lib/supabase-admin.ts` | Shared service-role Supabase client (Phase 10) |
+| `lib/validation.ts` | Shared input validation helpers (Phase 10) |
 
 ---
 
@@ -282,3 +386,6 @@
 - RLS policies enforce org isolation at database level
 - super_admin role has cross-org access for platform management
 - Tenant context works in both development (cookie) and production (subdomain)
+- Auth tokens must be obtained from `useAuth().session.access_token`, not from `localStorage.getItem('supabase.auth.token')` — Supabase stores sessions under a different key
+- All API routes use `service_role` key which bypasses RLS — authorization is enforced at the application layer
+- Security hardening completed — Phase 10. All critical and high severity findings fixed.

@@ -1,34 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let _supabaseAdmin: SupabaseClient | null = null;
-function getSupabaseAdmin() {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-  }
-  return _supabaseAdmin;
-}
-
-async function verifySuperAdmin(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '');
-  const { data, error } = await getSupabaseAdmin().auth.getUser(token);
-  if (error || !data.user) return null;
-
-  const { data: profile } = await getSupabaseAdmin()
-    .from('profiles')
-    .select('role')
-    .eq('id', data.user.id)
-    .maybeSingle();
-
-  if (!profile || profile.role !== 'super_admin') return null;
-  return data.user;
-}
+import { getSupabaseAdmin, verifySuperAdmin } from '@/lib/supabase-admin';
+import { isValidRole } from '@/lib/validation';
 
 export async function GET(req: Request) {
   try {
@@ -70,8 +42,9 @@ export async function GET(req: Request) {
       pageSize,
     });
   } catch (err) {
+    console.error('Failed to list users:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
+      { error: 'Internal error' },
       { status: 500 },
     );
   }
@@ -79,12 +52,19 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const user = await verifySuperAdmin(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifySuperAdmin(req);
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const { id, role, is_active } = body;
     if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+
+    if (role !== undefined && !isValidRole(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+    if (is_active !== undefined && typeof is_active !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid is_active value' }, { status: 400 });
+    }
 
     const supabase = getSupabaseAdmin();
 
@@ -111,7 +91,7 @@ export async function PATCH(req: Request) {
     }
 
     await supabase.from('audit_logs').insert({
-      actor_id: user.id,
+      actor_id: auth.user.id,
       org_id: targetProfile.org_id,
       action: 'update',
       entity: 'user',
@@ -121,8 +101,9 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
+    console.error('Failed to update user:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
+      { error: 'Internal error' },
       { status: 500 },
     );
   }

@@ -31,7 +31,7 @@ interface AdminOrganization {
 }
 
 export default function AdminOrganizationsPage() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [orgs, setOrgs] = useState<AdminOrganization[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export default function AdminOrganizationsPage() {
     async function loadOrgs() {
       try {
         const res = await fetch('/api/admin/organizations', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('supabase.auth.token') ?? ''}` },
+          headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
         });
         if (res.ok) {
           const data = await res.json();
@@ -53,13 +53,13 @@ export default function AdminOrganizationsPage() {
       }
     }
 
-    const token = localStorage.getItem('supabase.auth.token');
+    const token = session?.access_token;
     if (!token) {
       setLoading(false);
       return;
     }
     loadOrgs();
-  }, []);
+  }, [session]);
 
   if (!profile || profile.role !== 'super_admin') {
     return (

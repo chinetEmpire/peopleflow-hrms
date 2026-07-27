@@ -34,7 +34,7 @@ interface AdminUser {
 }
 
 export default function AdminUsersPage() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -59,7 +59,7 @@ export default function AdminUsersPage() {
       if (search) params.set('search', search);
 
       const res = await fetch(`/api/admin/users?${params}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('supabase.auth.token') ?? ''}` },
+        headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
       });
       if (res.ok) {
         const data = await res.json();
@@ -85,7 +85,7 @@ export default function AdminUsersPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('supabase.auth.token') ?? ''}`,
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
         },
         body: JSON.stringify({ id: userId, role: newRole }),
       });
@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('supabase.auth.token') ?? ''}`,
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
         },
         body: JSON.stringify({ id: userId, is_active: !currentActive }),
       });

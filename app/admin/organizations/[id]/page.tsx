@@ -20,6 +20,9 @@ import {
   Mail,
   Phone,
   Briefcase,
+  CreditCard,
+  Calendar,
+  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,7 +38,12 @@ interface OrgDetail {
   billing_email: string | null;
   user_count: number;
   department_count: number;
-  subscription: { plan_id: string; status: string } | null;
+  subscription: {
+    plan_id: string;
+    status: string;
+    billing_cycle: string;
+    current_period_end: string;
+  } | null;
 }
 
 interface OrgMember {
@@ -49,10 +57,25 @@ interface OrgMember {
   created_at: string;
 }
 
+const PLANS = [
+  { value: 'free', label: 'Free', maxEmployees: 10 },
+  { value: 'starter', label: 'Starter', maxEmployees: 50 },
+  { value: 'pro', label: 'Professional', maxEmployees: 200 },
+  { value: 'enterprise', label: 'Enterprise', maxEmployees: -1 },
+];
+
+const statusColors: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  trialing: 'bg-blue-100 text-blue-700',
+  past_due: 'bg-amber-100 text-amber-700',
+  canceled: 'bg-red-100 text-red-700',
+  paused: 'bg-gray-100 text-gray-700',
+};
+
 export default function AdminOrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +83,7 @@ export default function AdminOrganizationDetailPage() {
   const [editName, setEditName] = useState('');
   const [editPlan, setEditPlan] = useState('');
   const [editMaxEmployees, setEditMaxEmployees] = useState(0);
+  const [editBillingCycle, setEditBillingCycle] = useState('monthly');
 
   useEffect(() => {
     async function loadOrg() {
@@ -85,7 +109,7 @@ export default function AdminOrganizationDetailPage() {
       ] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('org_id', id),
         supabase.from('departments').select('*', { count: 'exact', head: true }).eq('org_id', id),
-        supabase.from('subscriptions').select('plan_id, status').eq('org_id', id).maybeSingle(),
+        supabase.from('subscriptions').select('plan_id, status, billing_cycle, current_period_end').eq('org_id', id).maybeSingle(),
         supabase.from('profiles').select('id, first_name, last_name, email, role, job_title, is_active, created_at').eq('org_id', id).order('created_at', { ascending: false }),
       ]);
 
@@ -98,6 +122,7 @@ export default function AdminOrganizationDetailPage() {
       setEditName(orgData.name);
       setEditPlan(orgData.plan);
       setEditMaxEmployees(orgData.max_employees);
+      setEditBillingCycle(sub?.billing_cycle || 'monthly');
       setMembers((membersData ?? []) as unknown as OrgMember[]);
       setLoading(false);
     }
@@ -136,27 +161,52 @@ export default function AdminOrganizationDetailPage() {
 
   async function handleSave() {
     if (!org) return;
+
+    const planChanged = editPlan !== org.plan;
+    const cycleChanged = editBillingCycle !== (org.subscription?.billing_cycle || 'monthly');
+
+    if (planChanged && org.user_count > 0) {
+      const newPlan = PLANS.find(p => p.value === editPlan);
+      if (newPlan && newPlan.maxEmployees !== -1 && org.user_count > newPlan.maxEmployees) {
+        if (!confirm(`Warning: This org has ${org.user_count} users but the ${newPlan.label} plan allows ${newPlan.maxEmployees}. Existing users won't be removed, but new employee creation will be blocked. Continue?`)) {
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/admin/organizations', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('supabase.auth.token') ?? ''}`,
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
         },
         body: JSON.stringify({
           id: org.id,
           name: editName,
           plan: editPlan,
           max_employees: editMaxEmployees,
+          billing_cycle: editBillingCycle,
         }),
       });
 
-      if (res.ok && org) {
-        setOrg({ ...org, name: editName, plan: editPlan, max_employees: editMaxEmployees });
-        toast.success('Organization updated successfully');
+      const data = await res.json();
+
+      if (res.ok) {
+        const newPlan = PLANS.find(p => p.value === editPlan);
+        setOrg({
+          ...org,
+          name: editName,
+          plan: editPlan,
+          max_employees: newPlan?.maxEmployees ?? editMaxEmployees,
+          subscription: org.subscription
+            ? { ...org.subscription, plan_id: editPlan, billing_cycle: editBillingCycle }
+            : { plan_id: editPlan, status: 'active', billing_cycle: editBillingCycle, current_period_end: new Date(Date.now() + (editBillingCycle === 'yearly' ? 365 : 30) * 86400000).toISOString() },
+        });
+        toast.success(data.subscription_updated ? 'Plan updated and subscription synced' : 'Organization updated');
       } else {
-        toast.error('Failed to update organization');
+        toast.error(data.error || 'Failed to update organization');
       }
     } catch {
       toast.error('Failed to update organization');
@@ -179,6 +229,9 @@ export default function AdminOrganizationDetailPage() {
     super_admin: 'bg-amber-100 text-amber-700',
   };
 
+  const selectedPlan = PLANS.find(p => p.value === editPlan);
+  const isOverLimit = selectedPlan && selectedPlan.maxEmployees !== -1 && org.user_count > selectedPlan.maxEmployees;
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -194,7 +247,7 @@ export default function AdminOrganizationDetailPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Card className="rounded-xl border-0 bg-white vcgl-shadow">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -230,7 +283,58 @@ export default function AdminOrganizationDetailPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Subscription</p>
+                <Badge className={statusColors[org.subscription?.status ?? 'active'] ?? 'bg-gray-100 text-gray-700'}>
+                  {org.subscription?.status ?? 'none'}
+                </Badge>
+              </div>
+              <CreditCard className="h-6 w-6 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Subscription Info */}
+      {org.subscription && (
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold text-[#051536] flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Current Subscription
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Status</p>
+                <Badge className={statusColors[org.subscription.status] ?? 'bg-gray-100 text-gray-700'}>
+                  {org.subscription.status}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Billing Cycle</p>
+                <p className="text-sm font-medium text-[#051536] capitalize">{org.subscription.billing_cycle}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Period Ends</p>
+                <p className="text-sm font-medium text-[#051536]">
+                  {new Date(org.subscription.current_period_end).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Employee Limit</p>
+                <p className="text-sm font-medium text-[#051536]">
+                  {org.max_employees === -1 ? 'Unlimited' : org.max_employees}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Edit Organization */}
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
@@ -259,13 +363,30 @@ export default function AdminOrganizationDetailPage() {
               <Label>Plan</Label>
               <select
                 value={editPlan}
-                onChange={(e) => setEditPlan(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEditPlan(val);
+                  const plan = PLANS.find(p => p.value === val);
+                  if (plan) {
+                    setEditMaxEmployees(plan.maxEmployees === -1 ? -1 : plan.maxEmployees);
+                  }
+                }}
                 className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="free">Free</option>
-                <option value="starter">Starter</option>
-                <option value="pro">Professional</option>
-                <option value="enterprise">Enterprise</option>
+                {PLANS.map(p => (
+                  <option key={p.value} value={p.value}>{p.label} ({p.maxEmployees === -1 ? 'Unlimited' : p.maxEmployees} employees)</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Billing Cycle</Label>
+              <select
+                value={editBillingCycle}
+                onChange={(e) => setEditBillingCycle(e.target.value)}
+                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -279,6 +400,16 @@ export default function AdminOrganizationDetailPage() {
               <p className="text-xs text-muted-foreground">-1 = unlimited</p>
             </div>
           </div>
+
+          {isOverLimit && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-700">
+                This org has {org.user_count} users but the selected plan allows {selectedPlan?.maxEmployees}. New employee creation will be blocked until the plan is upgraded or users are removed.
+              </p>
+            </div>
+          )}
+
           <div className="mt-4 flex justify-end">
             <Button onClick={handleSave} disabled={saving} className="rounded-lg bg-[#032364] hover:bg-[#032364]/90">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

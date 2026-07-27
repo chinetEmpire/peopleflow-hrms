@@ -6,7 +6,6 @@ function getPool() {
   if (!_pool) {
     _pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
     });
   }
   return _pool;
@@ -14,15 +13,13 @@ function getPool() {
 
 async function verifyUserAndGetOrg(req: Request): Promise<string | null> {
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return null;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
 
-  const token = authHeader.replace('Bearer ', '');
-  const { createClient } = await import('@supabase/supabase-js');
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  );
+  const token = authHeader.slice(7);
+  if (!token) return null;
+
+  const { getSupabaseAdmin } = await import('@/lib/supabase-admin');
+  const supabaseAdmin = getSupabaseAdmin();
 
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data.user) return null;
@@ -49,8 +46,9 @@ export async function GET(req: Request) {
     );
     return NextResponse.json({ departments: result.rows.map((r) => r.name) });
   } catch (err) {
+    console.error('Departments GET error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Database error' },
+      { error: 'Internal error' },
       { status: 500 },
     );
   }
@@ -83,8 +81,9 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ name: inserted.rows[0]?.name ?? trimmed });
   } catch (err) {
+    console.error('Departments POST error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Database error' },
+      { error: 'Internal error' },
       { status: 500 },
     );
   }

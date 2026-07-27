@@ -16,6 +16,8 @@ import {
   Building2,
   Users,
   ShieldCheck,
+  CreditCard,
+  FileText,
   LogOut,
   Loader2,
   Menu,
@@ -32,6 +34,8 @@ interface NavItem {
 const adminItems: NavItem[] = [
   { label: 'Platform Overview', href: '/admin', icon: LayoutDashboard },
   { label: 'Organizations', href: '/admin/organizations', icon: Building2 },
+  { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
+  { label: 'Invoices', href: '/admin/invoices', icon: FileText },
   { label: 'All Users', href: '/admin/users', icon: Users },
   { label: 'Audit Logs', href: '/admin/audit', icon: ShieldCheck },
 ];

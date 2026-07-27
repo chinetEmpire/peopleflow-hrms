@@ -7,14 +7,13 @@ import { useTenant } from '@/lib/tenant-context';
 import {
   getPlans,
   getCurrentSubscription,
-  createSubscription,
-  updateSubscriptionPlan,
   formatPrice,
   formatLimit,
   isPlanActive,
   type Plan,
   type Subscription,
 } from '@/lib/billing';
+import { isFlutterwaveConfigured } from '@/lib/flutterwave';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +27,8 @@ import {
   Zap,
   Crown,
   Building2,
+  CreditCard,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -40,7 +41,7 @@ const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
 
 export default function UpgradePage() {
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, session } = useAuth();
   const { organization } = useTenant();
 
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -49,6 +50,7 @@ export default function UpgradePage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
+  const [paymentConfigured, setPaymentConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || !profile)) {
@@ -76,26 +78,100 @@ export default function UpgradePage() {
     if (profile?.org_id) loadData();
   }, [profile?.org_id, organization?.plan]);
 
+  useEffect(() => {
+    setPaymentConfigured(isFlutterwaveConfigured());
+  }, []);
+
   async function handleUpgrade() {
     if (!selectedPlan || !profile?.org_id) return;
+
+    const plan = plans.find(p => p.id === selectedPlan);
+    if (!plan) return;
+
+    const isPaid = (billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly) > 0;
+
+    // Free plan — activate directly
+    if (!isPaid) {
+      setUpgrading(true);
+      try {
+        const token = session?.access_token ?? '';
+        const res = await fetch('/api/admin/subscriptions', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            id: organization?.id,
+            plan: selectedPlan,
+            billing_cycle: billingCycle,
+          }),
+        });
+        if (res.ok) {
+          toast.success('Plan updated!');
+          router.push('/billing');
+        } else {
+          toast.error('Failed to update plan');
+        }
+      } catch {
+        toast.error('Failed to update plan');
+      } finally {
+        setUpgrading(false);
+      }
+      return;
+    }
+
+    // Paid plan — initiate Flutterwave checkout
+    if (!paymentConfigured) {
+      toast.info('Payment gateway not active. Activating plan directly.');
+      setUpgrading(true);
+      try {
+        const token = session?.access_token ?? '';
+        const res = await fetch('/api/admin/subscriptions', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            id: organization?.id,
+            plan: selectedPlan,
+            billing_cycle: billingCycle,
+          }),
+        });
+        if (res.ok) {
+          router.push('/billing');
+        } else {
+          toast.error('Failed to activate plan');
+        }
+      } catch {
+        toast.error('Failed to activate plan');
+      } finally {
+        setUpgrading(false);
+      }
+      return;
+    }
+
     setUpgrading(true);
     try {
-      if (currentSub && isPlanActive(currentSub.status)) {
-        const success = await updateSubscriptionPlan(profile.org_id, selectedPlan, billingCycle);
-        if (success) {
-          toast.success('Plan updated successfully!');
-          router.push('/billing');
-        } else {
-          toast.error('Failed to update plan. Please try again.');
-        }
+      const token = session?.access_token ?? '';
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          plan_id: selectedPlan,
+          billing_cycle: billingCycle,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.checkout_url) {
+        window.location.href = data.checkout_url;
       } else {
-        const sub = await createSubscription(profile.org_id, selectedPlan, billingCycle);
-        if (sub) {
-          toast.success('Subscription activated!');
-          router.push('/billing');
-        } else {
-          toast.error('Failed to create subscription. Please try again.');
-        }
+        toast.error(data.error || 'Failed to initialize payment');
       }
     } catch {
       toast.error('An error occurred. Please try again.');
@@ -130,6 +206,16 @@ export default function UpgradePage() {
           </p>
         </div>
       </div>
+
+      {/* Payment gateway status */}
+      {paymentConfigured === false && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700">
+            Payment gateway (Flutterwave) is not configured. Plans will be activated without payment.
+          </p>
+        </div>
+      )}
 
       {/* Billing Cycle Toggle */}
       <div className="flex items-center justify-center">

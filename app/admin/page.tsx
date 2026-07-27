@@ -25,7 +25,7 @@ interface PlatformStats {
 }
 
 export default function AdminDashboardPage() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
     async function loadStats() {
       try {
         const res = await fetch('/api/admin/stats', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('supabase.auth.token') ?? ''}` },
+          headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
         });
         if (res.ok) {
           const data = await res.json();
@@ -46,13 +46,13 @@ export default function AdminDashboardPage() {
       }
     }
 
-    const token = localStorage.getItem('supabase.auth.token');
+    const token = session?.access_token;
     if (!token) {
       setLoading(false);
       return;
     }
     loadStats();
-  }, []);
+  }, [session]);
 
   if (!profile || profile.role !== 'super_admin') {
     return (

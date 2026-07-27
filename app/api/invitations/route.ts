@@ -1,44 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let _supabaseAdmin: SupabaseClient | null = null;
-function getSupabaseAdmin() {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-  }
-  return _supabaseAdmin;
-}
-
-async function verifyUser(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '');
-  const { data, error } = await getSupabaseAdmin().auth.getUser(token);
-  if (error || !data.user) return null;
-  return data.user;
-}
+import { getSupabaseAdmin, verifyHrAdmin } from '@/lib/supabase-admin';
+import { isValidRole } from '@/lib/validation';
 
 export async function POST(req: Request) {
   try {
-    const user = await verifyUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyHrAdmin(req);
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const { user, profile } = auth;
     const supabaseAdmin = getSupabaseAdmin();
-
-    // Check caller permissions
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role, org_id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (!profile || (profile.role !== 'hr_admin' && profile.role !== 'super_admin')) {
-      return NextResponse.json({ error: 'Only admins can invite members' }, { status: 403 });
-    }
 
     const body = await req.json();
     const { email, role = 'employee', action } = body;
@@ -46,6 +16,14 @@ export async function POST(req: Request) {
     if (action === 'invite') {
       if (!email) {
         return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+      }
+
+      if (role && !isValidRole(role)) {
+        return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+      }
+
+      if (profile.role === 'hr_admin' && (role === 'hr_admin' || role === 'super_admin')) {
+        return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
       }
 
       // Check for existing pending invitation
@@ -110,29 +88,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (err) {
     console.error('Invitation error:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
   try {
-    const user = await verifyUser(req);
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await verifyHrAdmin(req);
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const { profile } = auth;
     const supabaseAdmin = getSupabaseAdmin();
-
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role, org_id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (!profile || (profile.role !== 'hr_admin' && profile.role !== 'super_admin')) {
-      return NextResponse.json({ error: 'Only admins can view invitations' }, { status: 403 });
-    }
 
     const { data, error } = await supabaseAdmin
       .from('invitations')
@@ -152,9 +118,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ invitations });
   } catch (err) {
     console.error('Error fetching invitations:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

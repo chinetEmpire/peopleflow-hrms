@@ -70,7 +70,6 @@ The following features are present in the codebase:
 
 # Features In Progress
 
-- Stronger role-based permissions enforcement
 - More complete leave and approval workflow
 - Attendance data handling and business logic
 - Reporting enhancements
@@ -304,8 +303,29 @@ Future updates should be added here whenever significant milestones are reached.
   - Built platform overview dashboard (org stats, user stats, plan distribution, recent signups)
   - Built organization management page (list all orgs, search, view/edit details)
   - Built organization detail page (edit settings, view members)
-  - Built cross-org user management page (search, filter, change roles, activate/deactivate)
+  - Built cross-org user management page (search, filter by role, change roles, activate/deactivate)
   - Built platform-wide audit log viewer
   - Created admin API routes (stats, organizations, users) with super_admin verification
   - Added "Admin Panel" link to sidebar for super_admin role
+- Phase 9 Complete: Flutterwave Payment Integration
+  - Created Flutterwave SDK (checkout, verification, webhook signature)
+  - Built checkout API route for creating payment sessions
+  - Built webhook handler for processing completed payments
+  - Added Flutterwave tracking columns to subscriptions and invoices
+  - Built payment success/failure page for post-payment flow
+  - Updated billing page to show payment gateway status
+  - Integrated Flutterwave checkout in upgrade page for paid plans
+- Phase 10 Complete: Security Hardening
+  - Created shared lib/supabase-admin.ts (centralized service-role client + auth helpers)
+  - Created lib/validation.ts (role whitelist, input validation, pick() helper)
+  - Created lib/rate-limit.ts (in-memory sliding window rate limiter)
+  - Fixed privilege escalation — role field validated against VALID_ROLES on all endpoints
+  - Fixed mass assignment — employee update uses field whitelist (ALLOWED_UPDATE_FIELDS)
+  - Fixed webhook signature — fail-closed when secret missing + constant-time comparison
+  - Sanitized all error messages — catch blocks return generic strings, log raw errors server-side
+  - Fixed registration — super_admin/hr_admin not assignable via self-registration
+  - Added input validation on plan, max_employees, amount, trial_days, invoice status, passwords
+  - Added rate limiting on auth, billing, and webhook endpoints
+  - Removed ssl: { rejectUnauthorized: false } from departments route
+  - Deduplicated 13 Supabase admin client singletons into shared module
 - Progress tracked in PROCESS.md

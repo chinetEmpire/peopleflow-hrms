@@ -1,34 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let _supabaseAdmin: SupabaseClient | null = null;
-function getSupabaseAdmin() {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-  }
-  return _supabaseAdmin;
-}
-
-async function verifySuperAdmin(req: Request) {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '');
-  const { data, error } = await getSupabaseAdmin().auth.getUser(token);
-  if (error || !data.user) return null;
-
-  const { data: profile } = await getSupabaseAdmin()
-    .from('profiles')
-    .select('role')
-    .eq('id', data.user.id)
-    .maybeSingle();
-
-  if (!profile || profile.role !== 'super_admin') return null;
-  return data.user;
-}
+import { getSupabaseAdmin, verifySuperAdmin } from '@/lib/supabase-admin';
 
 export async function GET(req: Request) {
   try {
@@ -70,8 +41,9 @@ export async function GET(req: Request) {
       recentSignups: recentProfiles ?? [],
     });
   } catch (err) {
+    console.error('Failed to fetch admin stats:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

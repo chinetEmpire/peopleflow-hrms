@@ -32,7 +32,9 @@ import {
   Calendar,
   Download,
   ExternalLink,
+  Shield,
 } from 'lucide-react';
+import { isFlutterwaveConfigured } from '@/lib/flutterwave';
 
 export default function BillingPage() {
   const router = useRouter();
@@ -43,6 +45,7 @@ export default function BillingPage() {
   const [usage, setUsage] = useState<OrgUsage | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [paymentConfigured, setPaymentConfigured] = useState<boolean>(false);
 
   useEffect(() => {
     if (!loading && (!user || !profile)) {
@@ -63,6 +66,7 @@ export default function BillingPage() {
       setSubscription(sub);
       setUsage(usageData);
       setInvoices(invoiceData);
+      setPaymentConfigured(isFlutterwaveConfigured());
       setLoadingData(false);
     }
 
@@ -115,6 +119,53 @@ export default function BillingPage() {
             </div>
             <h2 className="text-sm font-semibold text-[#051536]">Current Plan</h2>
           </div>
+
+          {/* Subscription Status Warnings */}
+          {subscription && !isPlanActive(subscription.status) && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3">
+              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-red-700">
+                  {subscription.status === 'past_due' && 'Your subscription is past due. Please renew to avoid service interruption.'}
+                  {subscription.status === 'canceled' && 'Your subscription has been canceled. Please contact support to reinstate.'}
+                  {subscription.status === 'paused' && 'Your subscription is paused. Employee creation and certain features are disabled.'}
+                </p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  Contact your platform administrator or{' '}
+                  <Button variant="link" className="h-auto p-0 text-xs text-red-600 underline" onClick={() => router.push('/billing/upgrade')}>
+                    upgrade your plan
+                  </Button>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {subscription && isPlanActive(subscription.status) && subscription.current_period_end && (() => {
+            const daysUntilRenewal = Math.ceil(
+              (new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            );
+            if (daysUntilRenewal <= 7 && daysUntilRenewal > 0) {
+              return (
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <p className="text-sm text-amber-700">
+                    Your subscription renews in {daysUntilRenewal} day{daysUntilRenewal !== 1 ? 's' : ''}.
+                  </p>
+                </div>
+              );
+            }
+            if (daysUntilRenewal <= 0) {
+              return (
+                <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3">
+                  <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                  <p className="text-sm font-medium text-red-700">
+                    Your subscription has expired. Please renew immediately.
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -293,18 +344,37 @@ export default function BillingPage() {
         <CardContent className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#032364]/10">
-              <ExternalLink className="h-4 w-4 text-[#032364]" />
+              <Shield className="h-4 w-4 text-[#032364]" />
             </div>
-            <h2 className="text-sm font-semibold text-[#051536]">Payment Settings</h2>
+            <h2 className="text-sm font-semibold text-[#051536]">Payment Gateway</h2>
           </div>
-          <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">
-              Payment integration coming soon
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Stripe and Flutterwave integration will be available in a future update
-            </p>
+          
+          <div className="flex items-center justify-between p-4 rounded-lg border border-[#e2e8f0]">
+            <div className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${paymentConfigured ? 'bg-green-100' : 'bg-amber-100'}`}>
+                <CreditCard className={`h-5 w-5 ${paymentConfigured ? 'text-green-600' : 'text-amber-600'}`} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#051536]">Flutterwave</p>
+                <p className="text-xs text-muted-foreground">
+                  {paymentConfigured ? 'Payment processing is active' : 'Not configured — contact support'}
+                </p>
+              </div>
+            </div>
+            <Badge variant={paymentConfigured ? 'default' : 'secondary'} className="text-xs">
+              {paymentConfigured ? (
+                <><CheckCircle2 className="mr-1 h-3 w-3" /> Active</>
+              ) : (
+                <><AlertCircle className="mr-1 h-3 w-3" /> Inactive</>
+              )}
+            </Badge>
           </div>
+          
+          {!paymentConfigured && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Contact your platform administrator to enable online payments.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

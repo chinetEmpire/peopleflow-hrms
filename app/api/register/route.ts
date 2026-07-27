@@ -1,17 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let _supabaseAdmin: SupabaseClient | null = null;
-function getSupabaseAdmin() {
-  if (!_supabaseAdmin) {
-    _supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-  }
-  return _supabaseAdmin;
-}
+import { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin, verifyToken } from '@/lib/supabase-admin';
+import { isValidPassword } from '@/lib/validation';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 function generateSlug(name: string): string {
   let slug = name
@@ -47,6 +38,15 @@ async function makeUniqueSlug(supabaseAdmin: SupabaseClient, baseSlug: string): 
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const rateLimit = checkRateLimit(ip, 'auth');
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } },
+      );
+    }
+
     const body = await req.json();
     const { orgName, adminEmail, adminFirstName, adminLastName, adminPassword } = body;
 
@@ -54,11 +54,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
-    if (adminPassword.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
+    const passwordCheck = isValidPassword(adminPassword);
+    if (!passwordCheck.valid) {
+      return NextResponse.json({ error: passwordCheck.error }, { status: 400 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
+
+    // Verify caller — self-registration gets hr_admin only
+    const authUser = await verifyToken(req);
+    const role = authUser ? (body.role || 'hr_admin') : 'hr_admin';
 
     // Auto-generate slug from org name and ensure uniqueness
     const baseSlug = generateSlug(orgName);
@@ -94,7 +99,7 @@ export async function POST(req: Request) {
       user_metadata: {
         first_name: adminFirstName,
         last_name: adminLastName,
-        role: 'super_admin',
+        role,
         org_id: orgData.id,
       },
     });
@@ -111,7 +116,7 @@ export async function POST(req: Request) {
       first_name: adminFirstName,
       last_name: adminLastName,
       email: adminEmail,
-      role: 'super_admin',
+      role,
     }, { onConflict: 'id' });
 
     if (profileError) throw profileError;
@@ -134,7 +139,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('Registration error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal error' },
+      { error: 'An unexpected error occurred. Please try again.' },
       { status: 500 }
     );
   }
