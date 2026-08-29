@@ -1,8 +1,12 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Check } from 'lucide-react';
+import { getGatewayStatus } from '@/lib/gateway';
 
 const plans = [
   {
@@ -62,6 +66,14 @@ const plans = [
 ];
 
 export function PricingSection() {
+  const [gatewayConfigured, setGatewayConfigured] = useState(false);
+
+  useEffect(() => {
+    getGatewayStatus().then(setGatewayConfigured);
+  }, []);
+
+  const isComingSoon = (plan: (typeof plans)[number]) => plan.monthly > 0 && !gatewayConfigured;
+
   return (
     <section id="pricing" className="relative py-20 sm:py-28 bg-[#020316] text-white">
       <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 rounded-full bg-[#60a5fa]/10 blur-3xl" />
@@ -97,7 +109,14 @@ export function PricingSection() {
                 </div>
               )}
               <CardContent className="p-8">
-                <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                  {isComingSoon(plan) && (
+                    <Badge className="shrink-0 bg-[#ec4899]/20 px-2.5 py-0.5 rounded-full text-xs font-semibold text-[#ec4899]">
+                      Coming Soon
+                    </Badge>
+                  )}
+                </div>
                 <p className="mt-1 text-sm text-slate-300">{plan.description}</p>
 
                 <div className="mt-5">
@@ -132,17 +151,26 @@ export function PricingSection() {
                 </ul>
 
                 <div className="mt-8">
-                  <Link href="/register">
+                  {isComingSoon(plan) ? (
                     <Button
-                      className={`w-full rounded-3xl py-3 text-base font-medium ${
-                        plan.popular
-                          ? 'bg-gradient-to-r from-[#60a5fa] to-[#ec4899] text-slate-950 shadow-xl shadow-[#60a5fa]/20'
-                          : 'bg-white/10 text-white hover:bg-white/20'
-                      }`}
+                      disabled
+                      className="w-full cursor-not-allowed rounded-3xl bg-white/5 py-3 text-base font-medium text-slate-500"
                     >
-                      {plan.cta}
+                      Coming Soon
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link href="/register">
+                      <Button
+                        className={`w-full rounded-3xl py-3 text-base font-medium ${
+                          plan.popular
+                            ? 'bg-gradient-to-r from-[#60a5fa] to-[#ec4899] text-slate-950 shadow-xl shadow-[#60a5fa]/20'
+                            : 'bg-white/10 text-white hover:bg-white/20'
+                        }`}
+                      >
+                        {plan.cta}
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>

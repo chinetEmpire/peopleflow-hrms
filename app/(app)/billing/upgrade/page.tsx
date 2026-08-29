@@ -13,7 +13,7 @@ import {
   type Plan,
   type Subscription,
 } from '@/lib/billing';
-import { isPaystackConfigured } from '@/lib/paystack';
+import { getGatewayStatus } from '@/lib/gateway';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -77,7 +77,7 @@ export default function UpgradePage() {
   }, [profile?.org_id, organization?.plan]);
 
   useEffect(() => {
-    setPaymentConfigured(isPaystackConfigured());
+    getGatewayStatus().then(setPaymentConfigured);
   }, []);
 
   async function handleUpgrade() {
@@ -247,26 +247,39 @@ export default function UpgradePage() {
           const yearlySavings = plan.price_monthly * 12 - plan.price_yearly;
           const isSelected = selectedPlan === plan.id;
           const isCurrent = currentSub?.plan_id === plan.id || (!currentSub && organization?.plan === plan.id);
+          const comingSoon = (plan.price_monthly > 0 || plan.price_yearly > 0) && paymentConfigured === false;
 
           return (
             <Card
               key={plan.id}
-              className={`rounded-xl border-2 cursor-pointer transition-all ${
+              className={`rounded-xl border-2 ${
+                comingSoon
+                  ? 'cursor-not-allowed border-[#e2e8f0] bg-slate-50 opacity-80'
+                  : 'cursor-pointer transition-all'
+              } ${
                 isSelected
                   ? 'border-[#032364] bg-[#032364]/5'
                   : 'border-[#e2e8f0] bg-white hover:border-[#032364]/30'
               } ${plan.is_popular ? 'ring-2 ring-[#032364]/20' : ''}`}
-              onClick={() => setSelectedPlan(plan.id)}
+              onClick={() => {
+                if (comingSoon) return;
+                setSelectedPlan(plan.id);
+              }}
             >
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
                     <Icon className="h-5 w-5 text-[#032364]" />
                   </div>
-                  {plan.is_popular && (
+                  {plan.is_popular && !comingSoon && (
                     <Badge className="text-xs bg-[#032364] text-white">Popular</Badge>
                   )}
-                  {isCurrent && (
+                  {comingSoon && (
+                    <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700">
+                      Coming Soon
+                    </Badge>
+                  )}
+                  {isCurrent && !comingSoon && (
                     <Badge variant="secondary" className="text-xs">Current</Badge>
                   )}
                 </div>
@@ -308,20 +321,22 @@ export default function UpgradePage() {
 
                 <Button
                   className={`w-full mt-4 rounded-lg ${
-                    isSelected && !isCurrent
+                    comingSoon
+                      ? 'bg-secondary text-muted-foreground'
+                      : isSelected && !isCurrent
                       ? 'bg-[#032364] hover:bg-[#032364]/90'
                       : 'bg-secondary text-foreground hover:bg-secondary/80'
                   }`}
-                  disabled={isCurrent || upgrading}
+                  disabled={isCurrent || upgrading || comingSoon}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isCurrent) {
+                    if (!isCurrent && !comingSoon) {
                       setSelectedPlan(plan.id);
                       handleUpgrade();
                     }
                   }}
                 >
-                  {isCurrent ? 'Current Plan' : isSelected ? 'Select' : 'Choose'}
+                  {comingSoon ? 'Coming Soon' : isCurrent ? 'Current Plan' : isSelected ? 'Select' : 'Choose'}
                 </Button>
               </CardContent>
             </Card>

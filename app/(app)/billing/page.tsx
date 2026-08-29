@@ -35,7 +35,7 @@ import {
   ExternalLink,
   Shield,
 } from 'lucide-react';
-import { isPaystackConfigured } from '@/lib/paystack';
+import { getGatewayStatus } from '@/lib/gateway';
 
 export default function BillingPage() {
   const router = useRouter();
@@ -70,7 +70,7 @@ export default function BillingPage() {
       setPendingSub(rawSub?.status === 'pending' ? rawSub : null);
       setUsage(usageData);
       setInvoices(invoiceData);
-      setPaymentConfigured(isPaystackConfigured());
+      setPaymentConfigured(await getGatewayStatus());
       setLoadingData(false);
     }
 

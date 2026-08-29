@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { getPlans, formatPrice, type Plan } from '@/lib/billing';
-import { isPaystackConfigured } from '@/lib/paystack';
+import { getGatewayStatus } from '@/lib/gateway';
 import {
   Building2,
   Loader2,
@@ -50,6 +50,11 @@ export default function RegisterPage() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('free');
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [gatewayConfigured, setGatewayConfigured] = useState(false);
+
+  useEffect(() => {
+    getGatewayStatus().then(setGatewayConfigured);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && user && profile) {
@@ -70,6 +75,7 @@ export default function RegisterPage() {
 
   const selectedPlanDef = plans.find((p) => p.id === selectedPlan);
   const isPaidPlan = selectedPlanDef ? (selectedPlanDef.price_monthly > 0 || selectedPlanDef.price_yearly > 0) : false;
+  const isComingSoon = (plan: Plan) => (plan.price_monthly > 0 || plan.price_yearly > 0) && !gatewayConfigured;
 
   function validateStep1(): boolean {
     if (!orgName.trim()) {
@@ -171,7 +177,7 @@ export default function RegisterPage() {
 
       // Paid plan — if the payment gateway isn't configured (e.g. local dev),
       // activate the plan directly so the account is usable.
-      if (!isPaystackConfigured()) {
+      if (!gatewayConfigured) {
         const actRes = await fetch('/api/admin/subscriptions', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -366,6 +372,7 @@ export default function RegisterPage() {
 
                   {step === 3 && (
                     <div className="space-y-4">
+                      {gatewayConfigured && (
                       <div>
                         <Label>Billing Cycle</Label>
                         <RadioGroup
@@ -390,6 +397,7 @@ export default function RegisterPage() {
                           </div>
                         </RadioGroup>
                       </div>
+                      )}
 
                       {plansLoading ? (
                         <div className="flex items-center justify-center py-10">
@@ -403,30 +411,44 @@ export default function RegisterPage() {
                             const monthlyEquivalent =
                               billingCycle === 'yearly' ? plan.price_yearly / 12 : plan.price_monthly;
                             const isSelected = selectedPlan === plan.id;
+                            const comingSoon = isComingSoon(plan);
                             return (
                               <button
                                 key={plan.id}
                                 type="button"
-                                onClick={() => setSelectedPlan(plan.id)}
+                                disabled={comingSoon}
+                                onClick={() => {
+                                  if (comingSoon) return;
+                                  setSelectedPlan(plan.id);
+                                }}
                                 className={`w-full rounded-xl border p-4 text-left transition-all ${
-                                  isSelected
+                                  comingSoon
+                                    ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-70'
+                                    : isSelected
                                     ? 'border-[#0b1440] bg-[#0b1440]/5 ring-1 ring-[#0b1440]'
                                     : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex items-center gap-3">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0b1440]/10 text-[#0b1440]">
+                                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${comingSoon ? 'bg-slate-200 text-slate-500' : 'bg-[#0b1440]/10 text-[#0b1440]'}`}>
                                       <Icon className="h-4 w-4" />
                                     </div>
                                     <div>
-                                      <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
+                                        {comingSoon && (
+                                          <Badge variant="secondary" className="px-2 py-0.5 text-[10px] bg-amber-100 text-amber-700">
+                                            Coming Soon
+                                          </Badge>
+                                        )}
+                                      </div>
                                       <p className="text-xs text-slate-500">
                                         Up to {plan.max_employees} employees · {plan.max_departments} departments
                                       </p>
                                     </div>
                                   </div>
-                                  {isSelected && (
+                                  {isSelected && !comingSoon && (
                                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0b1440]">
                                       <Check className="h-3 w-3 text-white" />
                                     </div>
