@@ -9,6 +9,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontSize: {
+        xs: ['0.6875rem', '1.05rem'],
+        sm: ['0.8rem', '1.2rem'],
+        base: ['0.92rem', '1.4rem'],
+        lg: ['1.04rem', '1.55rem'],
+        xl: ['1.18rem', '1.7rem'],
+        '2xl': ['1.4rem', '2rem'],
+        '3xl': ['1.75rem', '2.2rem'],
+        '4xl': ['2.1rem', '2.6rem'],
+        '5xl': ['2.8rem', '1'],
+        '6xl': ['3.5rem', '1'],
+        '7xl': ['4.4rem', '1'],
+        '8xl': ['5.5rem', '1'],
+        '9xl': ['6.9rem', '1'],
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':

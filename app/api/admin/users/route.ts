@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin, verifySuperAdmin } from '@/lib/supabase-admin';
 import { isValidRole } from '@/lib/validation';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: Request) {
   try {
@@ -55,9 +56,16 @@ export async function PATCH(req: Request) {
     const auth = await verifySuperAdmin(req);
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const limit = checkRateLimit(`admin-users:${auth.user.id}`, 'admin');
+    if (!limit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
     const body = await req.json();
     const { id, role, is_active } = body;
-    if (!id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'Missing user id' }, { status: 400 });
+    }
 
     if (role !== undefined && !isValidRole(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
@@ -68,36 +76,55 @@ export async function PATCH(req: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
-    if (role !== undefined) updates.role = role;
-    if (is_active !== undefined) updates.is_active = is_active;
+    // Role assignments go through the assign_admin_role RPC, which verifies
+    // the caller is a current super_admin in the database, audits the change,
+    // and is the only path that can grant/revoke the super_admin role.
+    if (role !== undefined) {
+      const { error: rpcError } = await supabase.rpc('assign_admin_role', {
+        caller_id: auth.user.id,
+        target_id: id,
+        new_role: role,
+      });
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', id);
-
-    if (error) throw error;
-
-    // Look up the target user's org_id for the audit log
-    const { data: targetProfile } = await supabase
-      .from('profiles')
-      .select('org_id')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (!targetProfile?.org_id) {
-      return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
+      if (rpcError) {
+        console.error('[admin/users] assign_admin_role failed:', rpcError.message);
+        return NextResponse.json({ error: rpcError.message || 'Failed to update role' }, { status: 400 });
+      }
     }
 
-    await supabase.from('audit_logs').insert({
-      actor_id: auth.user.id,
-      org_id: targetProfile.org_id,
-      action: 'update',
-      entity: 'user',
-      entity_id: id,
-      details: { fields: Object.keys(updates), role, is_active },
-    });
+    const updates: Record<string, any> = {};
+    if (is_active !== undefined) updates.is_active = is_active;
+
+    if (Object.keys(updates).length > 0) {
+      updates.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Look up the target user's org_id for the audit log.
+      const { data: targetProfile } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!targetProfile) {
+        return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
+      }
+
+      await supabase.from('audit_logs').insert({
+        actor_id: auth.user.id,
+        org_id: targetProfile.org_id ?? null,
+        action: 'update',
+        entity: 'user',
+        entity_id: id,
+        details: { fields: Object.keys(updates), is_active },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

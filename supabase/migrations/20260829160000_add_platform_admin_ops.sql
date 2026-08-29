@@ -9,7 +9,7 @@
 -- ─────────────────────────────────────────────
 
 -- Allow org_id to be NULL ONLY for super_admin (platform staff).
-ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles.org_id_not_null;
+-- (org_id NOT NULL was set via ALTER COLUMN, not a named constraint — no DROP CONSTRAINT needed.)
 ALTER TABLE profiles ALTER COLUMN org_id DROP NOT NULL;
 
 DO $$

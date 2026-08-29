@@ -451,6 +451,38 @@
 
 ---
 
+## Phase 13.1: Platform Admin Bootstrap + Secure In-App Role Assignment ✅
+
+**Fixes the gap that no account existed to log in as a platform admin, and adds a secure path for a super_admin to grant/change roles from the UI without weakening Phase 11's escalation defences.**
+
+### Bootstrap the first platform admin (one-time, in Supabase)
+There is deliberately no self-serve path to become `super_admin` (registration forces `hr_admin`, `handle_new_user()` whitelists it out, and `prevent_role_escalation()` rejects role changes to `super_admin` even from the service role). The first platform admin must be created directly:
+
+1. Supabase Dashboard → **Authentication → Users → Add user** with email + strong password; copy the generated UUID.
+2. Supabase → **SQL Editor**:
+```sql
+DELETE FROM public.profiles WHERE id = '<uuid>';
+INSERT INTO public.profiles (id, email, first_name, last_name, role, org_id, is_active, must_change_password)
+VALUES ('<uuid>', 'Webjaradigital@yahoo.com', 'Platform', 'Admin', 'super_admin', NULL, true, true);
+```
+3. Sign in with that email → forced to set a new password (`/change-password`) → redirected to `/admin`.
+
+### Migration
+- `supabase/migrations/20260829170000_add_assign_admin_role.sql`
+  - `prevent_role_escalation()` now resolves the caller as `COALESCE(auth.uid(), NULLIF(current_setting('app.caller_id', true), '')::UUID)` — service-role writes without `app.caller_id` are still blocked (auth.uid() NULL), so the trigger remains the single enforcement point
+  - New `assign_admin_role(caller_id uuid, target_id uuid, new_role text)` `SECURITY DEFINER` RPC: validates caller is a current `super_admin`; blocks modifying another super_admin; grants `super_admin` detaches the target from any org (`org_id = NULL`); sets `app.caller_id` transaction-locally so the escalation trigger enforces the same role rules; records an audit event
+  - `EXECUTE` granted to `service_role` only; revoked from `anon`/`authenticated`/`PUBLIC`
+
+### Modified Files
+- `app/api/admin/users/route.ts` — PATCH now rate-limited (admin preset) and routes role changes through `assign_admin_role` RPC using the verified caller's id; `is_active` remains a direct update; audit allows NULL org (org-less platform admins)
+
+### Security properties
+- The only code path that can grant `super_admin` is the RPC, which requires the calling user to be a verified current super_admin AND execute privilege reserved for the service role
+- A platform admin can never modify or reset another platform admin (role or password)
+- Escalation trigger still blocks every other write path (self-service, service role, SQL-editor-style false auth) — behavior unchanged when `app.caller_id` is absent
+
+---
+
 ## Design Decisions
 
 | Decision | Choice |
@@ -510,6 +542,8 @@
 | `lib/supabase-admin.ts` | Shared service-role Supabase client (Phase 10) |
 | `lib/validation.ts` | Shared input validation helpers (Phase 10) |
 | `supabase/migrations/20260727140000_fix_role_escalation_vulnerabilities.sql` | Role escalation fixes (Phase 11) |
+| `supabase/migrations/20260829160000_add_platform_admin_ops.sql` | Platform admin ops migration (Phase 13) |
+| `supabase/migrations/20260829170000_add_assign_admin_role.sql` | Secure admin role-assignment RPC (Phase 13.1) |
 
 ---
 

@@ -390,3 +390,7 @@ Future updates should be added here whenever significant milestones are reached.
   - Forced password change: org-less super_admin redirected from app shell to /admin; must_change_password users redirected to /change-password on login
   - Added /forgot-password page (was linked from login but did not exist)
   - Security: temp passwords never stored/logged (only issuance audited), cross-org invoice linking blocked on reconcile, refunds require explicit confirm + reason, idempotent webhook upserts
+- Phase 13.1 Complete: Platform Admin Bootstrap + Secure In-App Role Assignment
+  - Migration `20260829170000_add_assign_admin_role.sql`: `prevent_role_escalation()` is now caller-aware (falls back to transaction-local `app.caller_id`); new `assign_admin_role()` SECURITY DEFINER RPC (service_role-only, validates caller is super_admin, blocks modifying another super_admin, grants super_admin with org_id NULL, audits)
+  - `app/api/admin/users` PATCH rate-limited and routes role changes through the RPC — the only code path that can grant `super_admin`
+  - Bootstrap: first platform admin created manually in Supabase (Auth → Add user, then SQL-editor profile INSERT with role `super_admin`) using `Webjaradigital@yahoo.com`; sign-in → forced `/change-password` → `/admin`

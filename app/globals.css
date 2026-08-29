@@ -96,6 +96,13 @@
   .sidebar-gradient {
     background: linear-gradient(180deg, #051536 0%, #042465 100%);
   }
+  .sidebar-gradient h1 {
+    font-size: 1.125rem;
+  }
+  .sidebar-gradient h2,
+  .sidebar-gradient button {
+    font-size: 0.75rem;
+  }
   .vcgl-shadow {
     box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.25);
   }

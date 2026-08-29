@@ -98,13 +98,13 @@ function SidebarContent({
           ) : (
             <img src="/logo.png" alt="flowHR" className="h-6 w-auto object-contain" />
           )}
-          <h1 className="text-xl font-bold text-white">{orgName}</h1>
+          <h1 className="text-lg font-bold text-white">{orgName}</h1>
         </div>
       </header>
 
       <nav className="mt-8 flex flex-1 flex-col px-4 overflow-y-auto scrollbar-thin">
         <div className="flex flex-col">
-          <h2 className="mb-4 px-2 text-sm font-medium text-white/60">Menu</h2>
+          <h2 className="mb-4 px-2 text-xs font-medium text-white/60">Menu</h2>
           <ul className="flex flex-col gap-1">
             {visibleMenu.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -114,13 +114,13 @@ function SidebarContent({
                     <Button
                       variant="ghost"
                       className={cn(
-                        'h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-base font-medium',
+                        'h-auto w-full justify-start gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium',
                         isActive
                           ? 'bg-white text-black hover:bg-white hover:text-black'
                           : 'bg-transparent text-white hover:bg-white/10 hover:text-white'
                       )}
                     >
-                      <item.icon className="h-5 w-5 shrink-0" />
+                      <item.icon className="h-4 w-4 shrink-0" />
                       {item.label}
                     </Button>
                   </Link>
@@ -132,7 +132,7 @@ function SidebarContent({
 
         {visibleGeneral.length > 0 && (
           <div className="mt-8 flex flex-col">
-            <h2 className="mb-4 px-2 text-sm font-medium text-white/60">General</h2>
+            <h2 className="mb-4 px-2 text-xs font-medium text-white/60">General</h2>
             <ul className="flex flex-col gap-1">
               {visibleGeneral.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
@@ -142,13 +142,13 @@ function SidebarContent({
                       <Button
                         variant="ghost"
                         className={cn(
-                          'h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-base font-medium',
+                          'h-auto w-full justify-start gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium',
                           isActive
                             ? 'bg-white text-black hover:bg-white hover:text-black'
                             : 'bg-transparent text-white hover:bg-white/10 hover:text-white'
                         )}
                       >
-                        <item.icon className="h-5 w-5 shrink-0" />
+                        <item.icon className="h-4 w-4 shrink-0" />
                         {item.label}
                       </Button>
                     </Link>
@@ -164,9 +164,9 @@ function SidebarContent({
         <Button
           variant="ghost"
           onClick={onSignOut}
-          className="w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-white hover:bg-white/10 hover:text-white"
+          className="w-full justify-start gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-white hover:bg-white/10 hover:text-white"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-4 w-4" />
           Sign Out
         </Button>
       </div>
@@ -251,7 +251,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#f2e9e9]">
       {/* Desktop Sidebar */}
-      <aside className="sidebar-gradient hidden md:flex w-[220px] shrink-0 flex-col py-6">
+      <aside className="sidebar-gradient hidden md:flex w-[190px] shrink-0 flex-col py-6">
         <SidebarContent
           pathname={pathname}
           visibleMenu={visibleMenu}
@@ -265,7 +265,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Mobile Sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="sidebar-gradient w-[260px] p-0">
+        <SheetContent side="left" className="sidebar-gradient w-[210px] p-0">
           <div className="flex h-full flex-col py-6">
             <SidebarContent
               pathname={pathname}
