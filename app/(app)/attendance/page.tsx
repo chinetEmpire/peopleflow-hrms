@@ -29,17 +29,29 @@ export default function AttendancePage() {
   const getCurrentLocation = async (): Promise<{ lat: number; lng: number } | null> => {
     if (!navigator.geolocation) return null;
 
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({ lat: position.coords.latitude, lng: position.coords.longitude });
-        },
-        () => {
-          resolve(null);
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-      );
-    });
+    const readOnce = (): Promise<{ lat: number; lng: number } | null> =>
+      new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({ lat: position.coords.latitude, lng: position.coords.longitude });
+          },
+          () => {
+            resolve(null);
+          },
+          { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+        );
+      });
+
+    const fixes: { lat: number; lng: number }[] = [];
+    for (let i = 0; i < 2; i++) {
+      const fix = await readOnce();
+      if (fix) fixes.push(fix);
+    }
+    if (fixes.length === 0) return null;
+
+    const avgLat = fixes.reduce((sum, f) => sum + f.lat, 0) / fixes.length;
+    const avgLng = fixes.reduce((sum, f) => sum + f.lng, 0) / fixes.length;
+    return { lat: avgLat, lng: avgLng };
   };
 
   async function reconcileAttendanceRecord(record: AttendanceRecord | null) {
