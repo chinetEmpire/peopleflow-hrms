@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Loader2, Lock, Mail, User, Check, AlertCircle } from 'lucide-react';
+import { Loader2, Lock, Mail, User, Check, AlertCircle } from 'lucide-react';
 
 export default function AcceptInvitePage({
   searchParams,
@@ -155,8 +155,8 @@ export default function AcceptInvitePage({
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#f2e9e9] via-[#e8e1f0] to-[#f2e9e9] px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#032364] shadow-lg">
-            <Building2 className="h-8 w-8 text-white" />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg">
+            <img src="/logo.png" alt="flowHR" className="h-12 w-auto object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#032364]">
             Join {orgName || 'Organization'}

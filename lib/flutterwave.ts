@@ -71,7 +71,7 @@ export async function createFlutterwaveCheckout(payload: {
         name: payload.name,
       },
       customizations: {
-        title: 'PeopleFlow HRMS',
+        title: 'flowHR',
         description: `${payload.planName} Plan Subscription`,
         logo: `${BASE_URL}/logo.png`,
       },

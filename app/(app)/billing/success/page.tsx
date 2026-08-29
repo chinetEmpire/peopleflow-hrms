@@ -71,7 +71,7 @@ export default function BillingSuccessPage() {
               </div>
               <h1 className="text-xl font-bold text-[#051536] mb-2">Payment Successful!</h1>
               <p className="text-sm text-muted-foreground mb-2">
-                Your subscription has been activated. Thank you for choosing PeopleFlow HRMS.
+                Your subscription has been activated. Thank you for choosing flowHR.
               </p>
               {txRef && (
                 <div className="flex items-center justify-center gap-2 mb-6">

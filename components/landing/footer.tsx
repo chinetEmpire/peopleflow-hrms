@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Building2 } from 'lucide-react';
 import { FadeIn } from './animations';
 
 const footerLinks = {
@@ -44,11 +43,9 @@ export function LandingFooter() {
           <div className="relative z-10 mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
             <div className="lg:col-span-1">
               <Link href="/" className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-gradient-to-br from-[#60a5fa] to-[#ec4899] shadow-lg shadow-[#60a5fa]/20">
-                  <Building2 className="h-6 w-6 text-white" />
-                </div>
+                <img src="/logo.png" alt="flowHR" className="h-12 w-auto" />
                 <div>
-                  <p className="text-lg font-semibold text-white">HR Platform</p>
+                  <p className="text-lg font-semibold text-white">flowHR</p>
                   <p className="mt-2 max-w-xs text-sm text-slate-400">
                     Built for Nigerian businesses. Designed to help small businesses grow.
                   </p>
@@ -83,7 +80,7 @@ export function LandingFooter() {
 
         <div className="relative z-10 mt-12 border-t border-white/10 pt-8 text-sm text-slate-500 sm:flex sm:items-center sm:justify-between">
           <p>Making HR simple and affordable for every Nigerian business.</p>
-          <p>&copy; {new Date().getFullYear()} HR Platform. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} flowHR. All rights reserved.</p>
         </div>
       </div>
     </footer>

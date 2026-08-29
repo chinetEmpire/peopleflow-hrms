@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Building2, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function LandingNavbar() {
@@ -27,10 +27,8 @@ export function LandingNavbar() {
     >
       <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#60a5fa] to-[#ec4899] shadow-lg shadow-[#60a5fa]/20">
-            <Building2 className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight text-white">HR Platform</span>
+          <img src="/logo.png" alt="flowHR" className="h-9 w-auto" />
+          <span className="text-lg font-semibold tracking-tight text-white">flowHR</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-200">

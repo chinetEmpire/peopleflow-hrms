@@ -51,8 +51,8 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS org_id UUID;
 -- 3. CREATE DEFAULT ORGANIZATION FOR EXISTING DATA
 -- ============================================================
 
-INSERT INTO organizations (id, name, slug, plan, max_employees)
-VALUES ('00000000-0000-0000-0000-000000000001', 'VCGL ONE', 'vcgl-one', 'enterprise', -1)
+INSERT INTO organizations (id, name, slug, display_name, plan, max_employees)
+VALUES ('00000000-0000-0000-0000-000000000001', 'flowHR', 'flowhr', 'flowHR', 'enterprise', -1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================

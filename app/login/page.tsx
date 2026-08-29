@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Loader2, Lock, Mail, UserPlus, Check } from 'lucide-react';
+import { Loader2, Lock, Mail, UserPlus, Check } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,7 +47,7 @@ export default function LoginPage() {
     );
   }
 
-  const orgName = organization?.display_name || organization?.name || 'HR Platform';
+  const orgName = organization?.display_name || organization?.name || 'flowHR';
   const primaryColor = organization?.primary_color || '#0b1440';
 
   return (
@@ -57,9 +57,7 @@ export default function LoginPage() {
           {organization?.logo_url ? (
             <img src={organization.logo_url} alt={orgName} className="mb-6 h-16 w-16 rounded-2xl object-contain shadow-lg" />
           ) : (
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 shadow-lg">
-              <Building2 className="h-8 w-8 text-white" />
-            </div>
+            <img src="/logo.png" alt="flowHR" className="mb-6 h-16 w-auto object-contain" />
           )}
 
           <h1 className="text-4xl font-semibold text-white lg:text-5xl">Welcome Back</h1>

@@ -6,8 +6,12 @@ import { Toaster } from '@/components/ui/sonner';
 import { DynamicBrandStyles } from '@/components/dynamic-brand-styles';
 
 export const metadata: Metadata = {
-  title: 'HR Platform — Modern HR Management for Growing Teams',
+  title: 'flowHR — Modern HR Management for Growing Teams',
   description: 'Streamline employee management, attendance tracking, payroll processing, and leave management in one powerful, secure platform.',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 };
 
 export const viewport: Viewport = {

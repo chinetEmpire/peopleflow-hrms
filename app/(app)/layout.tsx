@@ -25,7 +25,6 @@ import {
   ShieldCheck,
   LogOut,
   Loader2,
-  Building2,
   Menu,
   CreditCard,
   Banknote,
@@ -96,7 +95,7 @@ function SidebarContent({
           {orgLogoUrl ? (
             <img src={orgLogoUrl} alt={orgName} className="h-6 w-6 rounded object-contain" />
           ) : (
-            <Building2 className="h-6 w-6 text-white" />
+            <img src="/logo.png" alt="flowHR" className="h-6 w-auto object-contain" />
           )}
           <h1 className="text-xl font-bold text-white">{orgName}</h1>
         </div>
@@ -213,7 +212,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const visibleMenu = menuItems.filter((item) => item.roles.includes(profile.role));
   const visibleGeneral = generalItems.filter((item) => item.roles.includes(profile.role));
 
-  const orgName = organization?.display_name || organization?.name || 'HR Platform';
+  const orgName = organization?.display_name || organization?.name || 'flowHR';
   const orgLogoUrl = organization?.logo_url || null;
   const primaryColor = organization?.primary_color || '#032364';
 

@@ -1,4 +1,4 @@
-# VCGL ONE HR Management System
+# flowHR — HR Management System
 
 A modern HR management application built with Next.js, TypeScript, Tailwind CSS, shadcn/ui, and Supabase. The project currently focuses on authentication, a protected dashboard experience, employee management, attendance, time-off, reports, settings, and security-related views.
 
