@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -24,7 +22,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user && profile) {
-      router.replace('/dashboard');
+      if (profile.must_change_password) {
+        router.replace('/change-password');
+      } else if (profile.role === 'super_admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/dashboard');
+      }
     }
   }, [user, profile, loading, router]);
 
@@ -53,12 +57,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#07021a] via-[#0b1440] to-[#30103f] py-16 px-6">
       <div className="mx-auto max-w-7xl grid gap-10 lg:grid-cols-2 items-center">
-        <div className="lg:px-8">
-          {organization?.logo_url ? (
-            <img src={organization.logo_url} alt={orgName} className="mb-6 h-16 w-16 rounded-2xl object-contain shadow-lg" />
-          ) : (
-            <img src="/logo.png" alt="flowHR" className="mb-6 h-16 w-auto object-contain" />
-          )}
+        <div className="order-2 lg:px-8 lg:order-1">
+          <Link href="/">
+            {organization?.logo_url ? (
+              <img src={organization.logo_url} alt={orgName} className="mb-6 h-12 w-12 rounded-2xl object-contain shadow-lg" />
+            ) : (
+              <img src="/logo.png" alt="flowHR" className="mb-6 h-10 w-auto object-contain" />
+            )}
+          </Link>
 
           <h1 className="text-4xl font-semibold text-white lg:text-5xl">Welcome Back</h1>
           <p className="mt-4 max-w-xl text-lg text-slate-300">
@@ -98,7 +104,7 @@ export default function LoginPage() {
           <p className="mt-8 text-sm text-slate-400">{orgName} — Human Resources Management Platform</p>
         </div>
 
-        <div className="px-4">
+        <div className="order-1 px-4 lg:order-2">
           <Card className="rounded-[1.25rem] bg-white p-6 shadow-2xl">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold text-slate-900">Sign In</h2>

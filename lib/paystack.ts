@@ -14,18 +14,40 @@ export interface PaystackTransaction {
   currency: string;
   status: string;
   paid_at: string | null;
+  channel?: string | null;
+  created_at?: string | null;
   customer: {
     id: number;
     email: string;
   } | null;
   authorization?: {
     authorization_code?: string;
+    channel?: string | null;
+  } | null;
+}
+
+export interface PaystackRefund {
+  id: number;
+  reference?: string | null;
+  transaction_id: number;
+  status: string;
+  amount: number;
+  currency: string;
+  transaction?: {
+    id: number;
+    reference: string;
   } | null;
 }
 
 export interface PaystackWebhookEvent {
   event: string;
-  data: PaystackTransaction;
+  data: any;
+}
+
+export interface PaystackListResult {
+  transactions: PaystackTransaction[];
+  total: number;
+  totalPages: number;
 }
 
 /**
@@ -132,6 +154,84 @@ export function verifyWebhookSignature(body: string, signature: string | null): 
   const hashBuf = new TextEncoder().encode(hash);
   const sigBuf = new TextEncoder().encode(signature);
   return crypto.timingSafeEqual(hashBuf, sigBuf);
+}
+
+/**
+ * List Paystack transactions within a date range.
+ * Amounts returned by Paystack are in kobo (minor unit).
+ */
+export async function listPaystackTransactions(params: {
+  from: string;
+  to: string;
+  status?: string;
+  perPage?: number;
+  page?: number;
+}): Promise<PaystackListResult> {
+  const query = new URLSearchParams({
+    from: params.from,
+    to: params.to,
+    perPage: String(params.perPage ?? 100),
+    page: String(params.page ?? 1),
+  });
+  if (params.status) query.set('status', params.status);
+
+  const response = await fetch(`${PAYSTACK_API}/transaction?${query.toString()}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (data.status !== true || !Array.isArray(data.data)) {
+    console.error('Paystack list transactions error:', data);
+    return { transactions: [], total: 0, totalPages: 0 };
+  }
+
+  const meta = data.meta ?? {};
+  return {
+    transactions: data.data as PaystackTransaction[],
+    total: meta.total ?? 0,
+    totalPages: meta.pageCount ?? 0,
+  };
+}
+
+/**
+ * Issue a refund for a Paystack transaction.
+ * `amount_override` is in the major unit (naira); converted to kobo for Paystack.
+ * Omit to refund the full amount.
+ */
+export async function refundPaystackTransaction(
+  reference: string,
+  opts: { amount?: number } = {},
+): Promise<{ refund: PaystackRefund; error?: string }> {
+  try {
+    const body: Record<string, unknown> = { transaction: reference };
+    if (opts.amount !== undefined) {
+      body.amount = Math.round(opts.amount * 100);
+    }
+
+    const response = await fetch(`${PAYSTACK_API}/refund`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    if (data.status !== true || !data.data) {
+      console.error('Paystack refund error:', data);
+      return { refund: null as any, error: data.message ?? 'Refund failed' };
+    }
+
+    return { refund: data.data as PaystackRefund };
+  } catch (err) {
+    console.error('Paystack refund exception:', err);
+    return { refund: null as any, error: 'Refund request failed' };
+  }
 }
 
 /**

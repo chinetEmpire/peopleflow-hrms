@@ -18,7 +18,18 @@ import {
   Shield,
   UserX,
   UserCheck,
+  KeyRound,
+  Copy,
+  AlertTriangle,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface AdminUser {
   id: string;
@@ -42,6 +53,9 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<{ temp_password: string; expires_at: string; email: string; name: string } | null>(null);
   const pageSize = 20;
 
   useEffect(() => {
@@ -126,6 +140,39 @@ export default function AdminUsersPage() {
     } finally {
       setUpdatingId(null);
     }
+  }
+
+  async function handleConfirmReset() {
+    if (!resetTarget) return;
+    setResetting(true);
+    try {
+      const res = await fetch('/api/admin/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ user_id: resetTarget.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResetTarget(null);
+        setResetResult(data);
+        toast.success('Password reset issued');
+      } else {
+        toast.error(data.error || 'Failed to reset password');
+      }
+    } catch {
+      toast.error('Failed to reset password');
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  function copyPassword() {
+    if (!resetResult) return;
+    navigator.clipboard.writeText(resetResult.temp_password).catch(() => {});
+    toast.success('Temporary password copied');
   }
 
   if (!profile || profile.role !== 'super_admin') {
@@ -256,25 +303,37 @@ export default function AdminUsersPage() {
                         )}
                       </td>
                       <td className="p-4 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-lg"
-                          onClick={() => handleToggleActive(user.id, user.is_active)}
-                          disabled={updatingId === user.id}
-                        >
-                          {user.is_active ? (
-                            <>
-                              <UserX className="mr-1 h-3.5 w-3.5" />
-                              Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="mr-1 h-3.5 w-3.5" />
-                              Activate
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-lg text-[#032364] hover:text-[#032364]/80"
+                            disabled={updatingId === user.id}
+                            onClick={() => { setResetTarget(user); setResetResult(null); }}
+                          >
+                            <KeyRound className="mr-1 h-3.5 w-3.5" />
+                            Reset
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg"
+                            onClick={() => handleToggleActive(user.id, user.is_active)}
+                            disabled={updatingId === user.id}
+                          >
+                            {user.is_active ? (
+                              <>
+                                <UserX className="mr-1 h-3.5 w-3.5" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="mr-1 h-3.5 w-3.5" />
+                                Activate
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -313,6 +372,55 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* Reset password confirm */}
+      <Dialog open={!!resetTarget} onOpenChange={(o) => { if (!o && !resetting) setResetTarget(null); }}>
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#051536]">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Reset password for {resetTarget?.first_name} {resetTarget?.last_name}?
+            </DialogTitle>
+            <DialogDescription>
+              A temporary password will be generated and shown once. The user will be forced to change it on their next
+              login. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-lg" onClick={() => setResetTarget(null)} disabled={resetting}>
+              Cancel
+            </Button>
+            <Button className="rounded-lg bg-[#032364] hover:bg-[#032364]/90" onClick={handleConfirmReset} disabled={resetting}>
+              {resetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              Generate Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Temporary password result */}
+      <Dialog open={!!resetResult} onOpenChange={(o) => { if (!o) setResetResult(null); }}>
+        <DialogContent className="rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#051536]">Temporary password generated</DialogTitle>
+            <DialogDescription>
+              Share this with {resetResult?.name} ({resetResult?.email}). It expires{' '}
+              {resetResult ? new Date(resetResult.expires_at).toLocaleString() : ''} and is shown only once.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 rounded-lg border border-dashed border-[#032364]/40 bg-muted/30 p-3">
+            <code className="flex-1 font-mono text-sm font-semibold text-[#051536] break-all">{resetResult?.temp_password}</code>
+            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 rounded-lg" onClick={copyPassword}>
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button className="rounded-lg bg-[#032364] hover:bg-[#032364]/90" onClick={() => setResetResult(null)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

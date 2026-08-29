@@ -6,6 +6,7 @@ import { getSupabase, AuditLog } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   ShieldCheck,
   Search,
@@ -14,13 +15,18 @@ import {
   FileMinus,
   CheckCircle2,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function AdminAuditPage() {
   const { profile } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const pageSize = 100;
 
   useEffect(() => {
     async function loadLogs() {
@@ -44,16 +50,21 @@ export default function AdminAuditPage() {
     );
   }
 
-  const filtered = logs.filter((log) => {
-    const q = search.toLowerCase();
-    return (
-      log.action.toLowerCase().includes(q) ||
-      log.entity.toLowerCase().includes(q) ||
-      (log.profiles?.first_name ?? '').toLowerCase().includes(q) ||
-      (log.profiles?.last_name ?? '').toLowerCase().includes(q) ||
-      (log.profiles?.email ?? '').toLowerCase().includes(q)
-    );
-  });
+  const filtered = logs
+    .filter((log) => (actionFilter === 'all' ? true : log.action === actionFilter))
+    .filter((log) => {
+      const q = search.toLowerCase();
+      return (
+        log.action.toLowerCase().includes(q) ||
+        log.entity.toLowerCase().includes(q) ||
+        (log.profiles?.first_name ?? '').toLowerCase().includes(q) ||
+        (log.profiles?.last_name ?? '').toLowerCase().includes(q) ||
+        (log.profiles?.email ?? '').toLowerCase().includes(q)
+      );
+    });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   function actionIcon(action: string) {
     if (action === 'create') return <FilePlus className="h-4 w-4 text-green-600" />;
@@ -107,14 +118,32 @@ export default function AdminAuditPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search audit logs..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg pl-10"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search audit logs..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="rounded-lg pl-10"
+          />
+        </div>
+        <select
+          value={actionFilter}
+          onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
+          className="flex h-10 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="all">All Actions</option>
+          <option value="create">Create</option>
+          <option value="update">Update</option>
+          <option value="delete">Delete</option>
+          <option value="approve">Approve</option>
+          <option value="reject">Reject</option>
+          <option value="reconcile">Reconcile</option>
+          <option value="refund">Refund</option>
+          <option value="password_reset">Password Reset</option>
+          <option value="password_changed">Password Changed</option>
+        </select>
       </div>
 
       {/* Audit Log Table */}
@@ -129,7 +158,7 @@ export default function AdminAuditPage() {
             <p className="text-sm text-muted-foreground py-8 text-center">No audit logs found.</p>
           ) : (
             <div className="space-y-2">
-              {filtered.map((log) => (
+              {pageRows.map((log) => (
                 <div key={log.id} className="flex flex-col gap-2 rounded-lg border border-border/50 p-3 sm:flex-row sm:items-center sm:gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
                     {actionIcon(log.action)}
@@ -154,6 +183,34 @@ export default function AdminAuditPage() {
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} • {filtered.length} entries
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

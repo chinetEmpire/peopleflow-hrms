@@ -406,6 +406,51 @@
 
 ---
 
+## Phase 13: Platform Admin Console — Payments, Reconciliation & Admin Resets ✅
+
+**Extends the Phase 8 admin panel (`/admin`) into a full platform operations console for super_admins, and fully decouples platform staff from tenant organizations.**
+
+### Migration
+- `supabase/migrations/20260829160000_add_platform_admin_ops.sql`
+  - `payments` ledger table (status CHECK: success/pending/failed/partial_refund/refunded; reconciliation_status CHECK: matched/unmatched/mismatch/manual; UNIQUE paystack_transaction_id for idempotency)
+  - `invoices` gains `paystack_refund_id` + `refunded_at`
+  - `profiles` gains `must_change_password`; `org_id` now nullable with `CHECK (org_id IS NOT NULL OR role = 'super_admin')`; existing super_admin org_ids nulled
+  - `audit_logs.org_id` nullable (platform-level events)
+  - `password_resets` table (status issued/used/revoked, expires_at) — records issuance only, never the password
+  - RLS on new tables: super_admin only; grants for service role usage
+
+### New Files
+- `lib/platform-payments.ts` — `recordPayment()` (idempotent upsert), `recordRefund()` (accumulates refunded_amount + refund_history, updates invoice on success), `findPaymentByRefund()`, `autoMatchPayment()` (reference → invoice reference → amount+org+date heuristic)
+- `app/api/admin/payments/sync/route.ts` — POST, admin-gated + rate-limited; paginated Paystack pull (≤90-day window), maps reference→org via `audit_logs` (initiate_payment) + invoice fallback, runs `recordPayment` + `autoMatchPayment`
+- `app/api/admin/payments/reconcile/route.ts` — POST match/ignore/unlink with per-org invoice validation (cross-org linking blocked), audited
+- `app/api/admin/payments/refund/route.ts` — POST real Paystack refund; requires explicit `confirm` + reason; validates partial amount ≤ remaining; updates ledger + invoice; audited
+- `app/api/admin/users/reset-password/route.ts` — POST hard reset; temp password (crypto, 16 chars, no ambiguous chars) returned once, never stored; blocks resets of other super_admins; 24h expiry; audit-authorized
+- `app/api/change-password/route.ts` — self-service; validates password, clears `must_change_password`, marks resets used; audited
+- `app/change-password/page.tsx` — forced-change landing (respects role redirect after)
+- `app/forgot-password/page.tsx` — existed as a broken login link; now implemented via `resetPasswordForEmail`
+- Admin UI: `admin/payments/page.tsx` (ledger + summary + sync), `admin/payments/[id]/page.tsx` (match/ignore/unlink + refund panel + refund history), `admin/reconcile/page.tsx`
+
+### Modified Files
+- `lib/paystack.ts` — added `listPaystackTransactions()`, `refundPaystackTransaction()`, `isPaystackConfigured()` (already exported), richer transaction/refund types
+- `lib/supabase.ts` — `Profile.org_id` now `string | null`, added `must_change_password`
+- `app/api/billing/webhook/route.ts` — records every confirmed payment into the ledger (idempotent) and applies `refund.processing/pending/success/failed` events
+- `app/api/admin/payments/route.ts` — list + summary + single-payment lookup + PATCH (reconciliation updates with whitelisted fields)
+- `app/api/admin/stats/route.ts` + `app/admin/page.tsx` — payments KPIs (net collected, refunded, pending, reconciled)
+- `app/admin/layout.tsx` — added Payments + Reconciliation nav; "Back to HR Dashboard" hidden when the admin has no org
+- `app/admin/users/page.tsx` — Reset Password action with confirm dialog + one-time temp password dialog
+- `app/admin/audit/page.tsx` — action filter + pagination
+- `app/login/page.tsx` — redirects org-less super_admin → `/admin`, forced-password users → `/change-password`
+- `app/(app)/layout.tsx` — org-less super_admin redirected to `/admin`; forced-password users redirected to `/change-password`
+
+### Security properties
+- Every new admin route is `verifySuperAdmin()`-gated and rate-limited
+- Temp passwords generated with `crypto.randomBytes` over an ambiguity-free charset; never stored or logged — only issuance is audited; 24h expiry
+- Refunds require explicit confirm + reason; partial amounts validated against remaining refundable; cross-org invoice linking blocked
+- Ledger writes are idempotent (UNIQUE paystack_transaction_id upserts); webhook stays fail-closed on signature
+- Mass-assignment protection on all PATCH endpoints; generic sanitized errors
+
+---
+
 ## Design Decisions
 
 | Decision | Choice |

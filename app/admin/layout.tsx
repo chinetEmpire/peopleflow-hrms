@@ -22,6 +22,9 @@ import {
   Loader2,
   Menu,
   ArrowLeft,
+  Banknote,
+  Scale,
+  KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +37,8 @@ interface NavItem {
 const adminItems: NavItem[] = [
   { label: 'Platform Overview', href: '/admin', icon: LayoutDashboard },
   { label: 'Organizations', href: '/admin/organizations', icon: Building2 },
+  { label: 'Payments', href: '/admin/payments', icon: Banknote },
+  { label: 'Reconciliation', href: '/admin/reconcile', icon: Scale },
   { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { label: 'Invoices', href: '/admin/invoices', icon: FileText },
   { label: 'All Users', href: '/admin/users', icon: Users },
@@ -49,10 +54,12 @@ function AdminSidebarContent({
   pathname,
   onNavigate,
   onSignOut,
+  hasOrg,
 }: {
   pathname: string;
   onNavigate?: () => void;
   onSignOut: () => void;
+  hasOrg: boolean;
 }) {
   return (
     <>
@@ -98,17 +105,19 @@ function AdminSidebarContent({
         <div className="mt-8 flex flex-col">
           <h2 className="mb-4 px-2 text-sm font-medium text-white/60">Navigation</h2>
           <ul className="flex flex-col gap-1">
-            <li>
-              <Link href="/dashboard" onClick={onNavigate}>
-                <Button
-                  variant="ghost"
-                  className="h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-base font-medium bg-transparent text-white hover:bg-white/10 hover:text-white"
-                >
-                  <ArrowLeft className="h-5 w-5 shrink-0" />
-                  Back to HR Dashboard
-                </Button>
-              </Link>
-            </li>
+            {hasOrg && (
+              <li>
+                <Link href="/dashboard" onClick={onNavigate}>
+                  <Button
+                    variant="ghost"
+                    className="h-auto w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-base font-medium bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  >
+                    <ArrowLeft className="h-5 w-5 shrink-0" />
+                    Back to HR Dashboard
+                  </Button>
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
       </nav>
@@ -134,11 +143,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && (!user || !profile)) {
-      router.replace('/login');
-    }
-    if (!loading && profile && profile.role !== 'super_admin') {
-      router.replace('/dashboard');
+    if (!loading) {
+      if (!user || !profile) {
+        router.replace('/login');
+        return;
+      }
+      if (profile.role !== 'super_admin') {
+        router.replace('/dashboard');
+        return;
+      }
+      if (profile.must_change_password) {
+        router.replace('/change-password');
+        return;
+      }
     }
   }, [user, profile, loading, router]);
 
@@ -167,6 +184,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.replace('/login');
   }
 
+  const hasOrg = !!profile?.org_id;
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#f2e9e9]">
       {/* Desktop Sidebar */}
@@ -174,6 +193,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminSidebarContent
           pathname={pathname}
           onSignOut={handleSignOut}
+          hasOrg={hasOrg}
         />
       </aside>
 
@@ -185,6 +205,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               pathname={pathname}
               onNavigate={() => setMobileOpen(false)}
               onSignOut={handleSignOut}
+              hasOrg={hasOrg}
             />
           </div>
         </SheetContent>
@@ -219,14 +240,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          <div className="ml-auto">
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="rounded-lg">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                HR Dashboard
-              </Button>
-            </Link>
-          </div>
+          {hasOrg && (
+            <div className="ml-auto">
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" className="rounded-lg">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  HR Dashboard
+                </Button>
+              </Link>
+            </div>
+          )}
         </header>
 
         {/* Page content */}

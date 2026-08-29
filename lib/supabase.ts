@@ -51,6 +51,7 @@ export interface Profile {
   hire_date: string | null;
   manager_id: string | null;
   is_active: boolean;
+  must_change_password: boolean;
   created_at: string;
   updated_at: string;
   gender: string | null;

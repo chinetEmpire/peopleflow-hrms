@@ -183,7 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [pendingSub, setPendingSub] = useState<{ plan_id: string; status: string } | null>(null);
 
   useEffect(() => {
-    if (!profile) return;
+    if (!profile?.org_id) return;
     let cancelled = false;
     getSubscriptionRow(profile.org_id)
       .then((row) => {
@@ -207,8 +207,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useAttendanceReminders(profile, null);
 
   useEffect(() => {
-    if (!loading && (!user || !profile)) {
-      router.replace('/login');
+    if (!loading) {
+      if (!user || !profile) {
+        router.replace('/login');
+        return;
+      }
+      if (profile.must_change_password) {
+        router.replace('/change-password');
+        return;
+      }
+      if (profile.role === 'super_admin' && !profile.org_id) {
+        router.replace('/admin');
+        return;
+      }
     }
   }, [user, profile, loading, router]);
 

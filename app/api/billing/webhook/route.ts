@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { verifyWebhookSignature, verifyPaystackTransaction, type PaystackTransaction } from '@/lib/paystack';
+import { recordPayment, recordRefund } from '@/lib/platform-payments';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 async function fulfillOrder(supabase: SupabaseClient, reference: string, transaction: PaystackTransaction) {
@@ -119,6 +120,17 @@ async function fulfillOrder(supabase: SupabaseClient, reference: string, transac
     },
   });
 
+  // Persist to the platform payment ledger (idempotent via Paystack tx id).
+  const ledgerResult = await recordPayment(supabase, {
+    orgId,
+    transaction,
+    planId,
+    billingCycle,
+  });
+  if (ledgerResult.error) {
+    console.error('Failed to record payment in ledger:', ledgerResult.error);
+  }
+
   return { success: true, orgId };
 }
 
@@ -155,6 +167,29 @@ export async function POST(req: NextRequest) {
 
       const supabase = getSupabaseAdmin();
       const result = await fulfillOrder(supabase, reference, verified);
+
+      return NextResponse.json({ received: true, ...result });
+    }
+
+    // Refund lifecycle events (processing → success / failed).
+    if (event.event.startsWith('refund.')) {
+      const refund = event.data;
+      if (!refund || typeof refund.id !== 'number') {
+        return NextResponse.json({ received: true, skipped: 'invalid_refund_payload' });
+      }
+
+      const shouldRecord = ['refund.processing', 'refund.pending', 'refund.success', 'refund.failed'].includes(event.event);
+      if (!shouldRecord) {
+        return NextResponse.json({ received: true });
+      }
+
+      const supabase = getSupabaseAdmin();
+      const result = await recordRefund(supabase, refund);
+
+      if (result.error) {
+        console.error(`Webhook refund error (${event.event}):`, result.error);
+        return NextResponse.json({ received: true, error: result.error });
+      }
 
       return NextResponse.json({ received: true, ...result });
     }

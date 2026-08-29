@@ -12,6 +12,10 @@ import {
   FolderOpen,
   TrendingUp,
   Loader2,
+  Banknote,
+  CircleCheck,
+  TriangleAlert,
+  Undo2,
 } from 'lucide-react';
 
 interface PlatformStats {
@@ -22,6 +26,18 @@ interface PlatformStats {
   totalDepartments: number;
   planBreakdown: { plan: string; count: number }[];
   recentSignups: any[];
+  payments: {
+    grossCollected: number;
+    netCollected: number;
+    refundedAmount: number;
+    pendingAmount: number;
+    matchedPayments: number;
+    unmatchedPayments: number;
+  };
+}
+
+function formatNGN(amount: number): string {
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(amount ?? 0);
 }
 
 export default function AdminDashboardPage() {
@@ -136,6 +152,71 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
                 <FolderOpen className="h-6 w-6 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Revenue strip */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Net Collected</p>
+                <p className="text-2xl font-semibold text-[#051536]">{formatNGN(stats?.payments?.netCollected ?? 0)}</p>
+                <p className="text-xs text-muted-foreground mt-1">Gross {formatNGN(stats?.payments?.grossCollected ?? 0)}</p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500/10">
+                <Banknote className="h-6 w-6 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Refunded</p>
+                <p className="text-2xl font-semibold text-red-600">{formatNGN(stats?.payments?.refundedAmount ?? 0)}</p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10">
+                <Undo2 className="h-6 w-6 text-red-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Pending/Failed</p>
+                <p className="text-2xl font-semibold text-amber-600">{formatNGN(stats?.payments?.pendingAmount ?? 0)}</p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
+                <TriangleAlert className="h-6 w-6 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-xl border-0 bg-white vcgl-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Reconciled</p>
+                <p className="text-2xl font-semibold text-[#051536]">
+                  {stats?.payments?.matchedPayments ?? 0}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {' '}matched / {stats?.payments?.unmatchedPayments ?? 0} open
+                  </span>
+                </p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
+                <CircleCheck className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>

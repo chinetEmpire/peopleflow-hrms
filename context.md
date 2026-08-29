@@ -69,6 +69,9 @@ The following features are present in the codebase:
 - Flutterwave payment integration (migrated to Paystack — see Phase 12)
 - Payroll management (schedules, compensation, payslips)
 - Super admin platform dashboard (orgs, users, audit logs)
+- Platform payments ledger with Paystack sync, reconciliation, and real refunds
+- Platform admin password resets (temp password + forced change on next login)
+- Decoupled platform admins (super_admin org_id is NULL; not bound to any tenant)
 - Role-based access control enforced at API, database, and UI layers
 - Database triggers preventing role escalation
 - Rate limiting on auth, billing, and webhook endpoints
@@ -376,3 +379,14 @@ Future updates should be added here whenever significant milestones are reached.
   - Removed lib/flutterwave.ts; Flutterwave env keys no longer used
   - PAYSTACK_SECRET_KEY / PAYSTACK_PUBLIC_KEY / PAYSTACK_WEBHOOK_SECRET documented in .env.example
   - Dev fallback: paid plans auto-activate without payment until Paystack keys are configured
+- Phase 13 Complete: Platform Admin Console (Payments, Reconciliation & Admin Resets)
+  - Migration `20260829160000_add_platform_admin_ops.sql`: `payments` ledger, `password_resets`, invoices refund columns, `profiles.must_change_password`, decoupled super_admin (org_id NULL via CHECK), nullable audit_logs.org_id, super_admin-only RLS on new tables
+  - lib/paystack.ts extended: listPaystackTransactions, refundPaystackTransaction, isPaystackConfigured
+  - New lib/platform-payments.ts: recordPayment (idempotent upsert), recordRefund, findPaymentByRefund, autoMatchPayment
+  - Webhook now records every confirmed payment into the ledger and applies refund.processing/pending/success/failed events; manual refunds also synced to the ledger and linked invoices
+  - New admin APIs (all super_admin-gated + rate-limited): payments list/summary/PATCH, payments/sync (Paystack paginated pull, ≤90-day window), payments/reconcile, payments/refund (confirmed + note + partial amounts), users/reset-password (blocks resets of other super_admins), change-password (self-service, clears forced flag)
+  - Admin UI: Payments ledger page, payment detail (match/ignore/unlink + refund panel + refund history), Reconciliation dashboard, Reset Password with one-time temp password dialog; admin sidebar now includes Payments + Reconciliation; "Back to HR Dashboard" hidden for org-less admins
+  - Platform overview page shows collected/refunded/pending/reconciled KPIs; audit log viewer gained action filter + pagination
+  - Forced password change: org-less super_admin redirected from app shell to /admin; must_change_password users redirected to /change-password on login
+  - Added /forgot-password page (was linked from login but did not exist)
+  - Security: temp passwords never stored/logged (only issuance audited), cross-org invoice linking blocked on reconcile, refunds require explicit confirm + reason, idempotent webhook upserts
