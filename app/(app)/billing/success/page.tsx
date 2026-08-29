@@ -21,21 +21,21 @@ export default function BillingSuccessPage() {
   const { user, profile, loading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [txRef, setTxRef] = useState('');
+  const fromRegister = searchParams.get('from') === 'register';
+  const isNewOrg = fromRegister;
 
   useEffect(() => {
-    const txRefParam = searchParams.get('tx_ref');
-    const statusParam = searchParams.get('status');
+    // Paystack redirects back with ?trxref=REF&reference=REF.
+    const reference = searchParams.get('reference') ?? searchParams.get('trxref');
 
-    if (txRefParam) {
-      setTxRef(txRefParam);
+    if (reference) {
+      setTxRef(reference);
     }
 
-    if (statusParam === 'successful') {
-      setStatus('success');
-    } else if (statusParam === 'cancelled' || statusParam === 'failed') {
-      setStatus('failed');
-    } else if (txRefParam) {
-      // Status not in URL params, check after a delay
+    // Paystack doesn't send a status param on redirect — a reference means the
+    // user went through checkout. The webhook authorizes fulfillment; abandoned
+    // payments stay 'pending' and are surfaced by the app's payment banner.
+    if (reference) {
       setStatus('success');
     } else {
       setStatus('failed');
@@ -82,19 +82,39 @@ export default function BillingSuccessPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <Button
-                  onClick={() => router.push('/billing')}
-                  className="w-full rounded-lg bg-[#032364] hover:bg-[#032364]/90"
-                >
-                  View Billing Details
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push('/dashboard')}
-                  className="w-full rounded-lg"
-                >
-                  Go to Dashboard
-                </Button>
+                {fromRegister ? (
+                  <>
+                    <Button
+                      onClick={() => router.push('/onboarding')}
+                      className="w-full rounded-lg bg-[#032364] hover:bg-[#032364]/90"
+                    >
+                      {isNewOrg ? 'Continue to Organize Setup' : 'Continue to Setup'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push('/dashboard')}
+                      className="w-full rounded-lg"
+                    >
+                      Go to Dashboard
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => router.push('/billing')}
+                      className="w-full rounded-lg bg-[#032364] hover:bg-[#032364]/90"
+                    >
+                      View Billing Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push('/dashboard')}
+                      className="w-full rounded-lg"
+                    >
+                      Go to Dashboard
+                    </Button>
+                  </>
+                )}
               </div>
             </>
           )}

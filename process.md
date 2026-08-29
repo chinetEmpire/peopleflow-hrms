@@ -356,6 +356,56 @@
 
 ---
 
+## Phase 12: Paystack Payment Integration ✅
+
+**Migrates the payment gateway from Flutterwave → Paystack.**
+
+**Migrations:**
+- `supabase/migrations/20260729150000_add_paystack_tracking.sql`
+
+**New Files:**
+- `lib/paystack.ts` — Paystack SDK (checkout/initialize, verification, webhook signature, `isPaystackConfigured`)
+- `supabase/migrations/20260729140000_rework_plans.sql` — 3 Naira tiers + `pending` subscription status (Free/Starter/Professional)
+
+**Changed Files:**
+- `app/api/billing/checkout/route.ts` — Paystack init (amounts in kobo), `from_register` flag builds `/billing/success?from=register` server-side
+- `app/api/billing/webhook/route.ts` — handles `charge.success` with `x-paystack-signature` (HMAC SHA512, fail-closed), verifies via API, activates subscription + creates invoice
+- `app/register/page.tsx` — plan-selection step; paid plans start Paystack checkout
+- `app/(app)/billing/upgrade/page.tsx` — Paystack checkout for paid upgrades
+- `app/(app)/billing/page.tsx` — shows Paystack gateway status + "awaiting payment" banner
+- `app/(app)/billing/success/page.tsx` — reads Paystack `reference`/`trxref` redirect params
+- `app/(app)/layout.tsx` — payment-pending banner for locked accounts
+- Deleted `lib/flutterwave.ts` (Flutterwave no longer used)
+
+**Paystack Features:**
+- Checkout via Paystack Standard (redirect to authorization URL)
+- Webhook signature verification (SHA512 HMAC, constant-time)
+- Server-side transaction verification via `transaction/verify`
+- Automatic subscription activation + invoice generation on `charge.success`
+- Graceful dev fallback when `PAYSTACK_*` keys are not configured
+
+**Environment Variables Required:**
+- `PAYSTACK_SECRET_KEY` — Paystack API secret key
+- `PAYSTACK_PUBLIC_KEY` — Paystack publishable key
+- `PAYSTACK_WEBHOOK_SECRET` — Webhook signature secret (from Paystack dashboard)
+
+**Payment Flow:**
+1. User selects a paid plan (registration step 3 or upgrade page)
+2. Frontend calls `/api/billing/checkout` with plan details (+ `from_register` for signups)
+3. Backend creates Paystack transaction and returns the authorization URL
+4. User completes payment on Paystack (amounts billed in kobo under the hood)
+5. Paystack redirects to `/billing/success?reference=...&trxref=...`
+6. Paystack sends a `charge.success` webhook to `/api/billing/webhook`
+7. Webhook verifies the transaction and activates the pending subscription
+8. Invoice created and organization plan/limits updated
+
+**Pay-before-use registration:**
+- Free plan → subscription created `active`, straight to `/onboarding`
+- Paid plan → subscription created `pending`, account stays locked until the webhook confirms payment
+- Locked accounts show an "awaiting payment" banner (app shell + billing page)
+
+---
+
 ## Design Decisions
 
 | Decision | Choice |
@@ -408,9 +458,9 @@
 | `app/(app)/payroll/page.tsx` | Payroll dashboard |
 | `app/(app)/payroll/runs/new/page.tsx` | Create payroll run page |
 | `app/(app)/payroll/runs/[id]/page.tsx` | Payroll run detail page |
-| `lib/flutterwave.ts` | Flutterwave SDK (checkout, verify, webhook) |
-| `app/api/billing/checkout/route.ts` | Flutterwave checkout API |
-| `app/api/billing/webhook/route.ts` | Flutterwave webhook handler |
+| `lib/paystack.ts` | Paystack SDK (checkout, verify, webhook) |
+| `app/api/billing/checkout/route.ts` | Paystack checkout API |
+| `app/api/billing/webhook/route.ts` | Paystack webhook handler |
 | `app/(app)/billing/success/page.tsx` | Post-payment success/failure page |
 | `lib/supabase-admin.ts` | Shared service-role Supabase client (Phase 10) |
 | `lib/validation.ts` | Shared input validation helpers (Phase 10) |

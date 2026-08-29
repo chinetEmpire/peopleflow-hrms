@@ -15,6 +15,7 @@ import {
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAttendanceReminders } from '@/hooks/use-attendance-reminders';
+import { getSubscriptionRow } from '@/lib/billing';
 import {
   LayoutDashboard,
   Calendar,
@@ -179,6 +180,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, profile, loading, signOut } = useAuth();
   const { organization } = useTenant();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingSub, setPendingSub] = useState<{ plan_id: string; status: string } | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    let cancelled = false;
+    getSubscriptionRow(profile.org_id)
+      .then((row) => {
+        if (cancelled) return;
+        setPendingSub(row?.status === 'pending' ? row : null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
 
   const {
     notifications,
@@ -295,6 +311,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </div>
         </header>
+
+        {/* Payment pending banner */}
+        {pendingSub && (
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 md:px-8">
+            <div className="flex items-center gap-2 text-sm text-amber-700">
+              <Clock className="h-4 w-4 shrink-0" />
+              <span>
+                Your plan is awaiting payment. Features stay locked until payment is confirmed.
+              </span>
+            </div>
+            <Link href="/billing/upgrade" className="shrink-0 text-sm font-semibold text-amber-700 underline hover:text-amber-800">
+              Pay Now
+            </Link>
+          </div>
+        )}
 
         {/* Page content */}
         <main className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">

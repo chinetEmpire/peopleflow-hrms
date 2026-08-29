@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { getPlans, formatPrice, type Plan } from '@/lib/billing';
+import { isPaystackConfigured } from '@/lib/paystack';
 import {
   Building2,
   Loader2,
@@ -17,7 +21,16 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
+  Sparkles,
+  Zap,
+  Crown,
 } from 'lucide-react';
+
+const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  free: Sparkles,
+  starter: Zap,
+  pro: Crown,
+};
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,11 +46,30 @@ export default function RegisterPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState('free');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+
   useEffect(() => {
     if (!authLoading && user && profile) {
       router.replace('/dashboard');
     }
   }, [user, profile, authLoading, router]);
+
+  useEffect(() => {
+    getPlans().then((data) => {
+      setPlans(data);
+      if (data.length > 0) {
+        const freePlan = data.find((p) => p.id === 'free');
+        setSelectedPlan(freePlan?.id ?? data[0].id);
+      }
+      setPlansLoading(false);
+    });
+  }, []);
+
+  const selectedPlanDef = plans.find((p) => p.id === selectedPlan);
+  const isPaidPlan = selectedPlanDef ? (selectedPlanDef.price_monthly > 0 || selectedPlanDef.price_yearly > 0) : false;
 
   function validateStep1(): boolean {
     if (!orgName.trim()) {
@@ -81,6 +113,11 @@ export default function RegisterPage() {
     if (step === 1 && validateStep1()) {
       setStep(2);
       setError('');
+      return;
+    }
+    if (step === 2 && validateStep2()) {
+      setStep(3);
+      setError('');
     }
   }
 
@@ -101,6 +138,8 @@ export default function RegisterPage() {
           adminFirstName: adminFirstName.trim(),
           adminLastName: adminLastName.trim(),
           adminPassword,
+          plan: selectedPlan,
+          billing_cycle: billingCycle,
         }),
       });
 
@@ -113,7 +152,7 @@ export default function RegisterPage() {
       }
 
       const { getSupabase } = await import('@/lib/supabase');
-      const { error: signInError } = await getSupabase().auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
         email: adminEmail.trim(),
         password: adminPassword,
       });
@@ -123,7 +162,49 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push('/onboarding');
+      const token = signInData.session?.access_token ?? '';
+
+      if (!data.requires_payment) {
+        router.push('/onboarding');
+        return;
+      }
+
+      // Paid plan — if the payment gateway isn't configured (e.g. local dev),
+      // activate the plan directly so the account is usable.
+      if (!isPaystackConfigured()) {
+        const actRes = await fetch('/api/admin/subscriptions', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id: data.orgId, plan: selectedPlan, billing_cycle: billingCycle }),
+        });
+        if (actRes.ok) {
+          router.push('/onboarding');
+        } else {
+          setError('Account created, but plan activation failed. Contact support.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Start Paystack checkout, then return to the app to finish setup.
+      const checkoutRes = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          plan_id: selectedPlan,
+          billing_cycle: billingCycle,
+          from_register: true,
+        }),
+      });
+
+      const checkoutData = await checkoutRes.json();
+
+      if (checkoutRes.ok && checkoutData.checkout_url) {
+        window.location.href = checkoutData.checkout_url;
+      } else {
+        setError(checkoutData.error || 'Failed to start payment');
+        setLoading(false);
+      }
     } catch {
       setError('An unexpected error occurred');
       setLoading(false);
@@ -185,7 +266,7 @@ export default function RegisterPage() {
               <h2 className="text-xl font-semibold text-slate-900">Create Account</h2>
               <p className="mt-1 text-sm text-slate-500">Fill in your details to get started</p>
 
-              <form onSubmit={step === 2 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }} className="mt-6 space-y-4">
+              <form onSubmit={step === 3 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }} className="mt-6 space-y-4">
                 {step === 1 && (
                   <div>
                     <Label htmlFor="orgName">Organization Name</Label>
@@ -280,8 +361,109 @@ export default function RegisterPage() {
                         />
                       </div>
                     </div>
-                  </>
-                )}
+</>
+                  )}
+
+                  {step === 3 && (
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Billing Cycle</Label>
+                        <RadioGroup
+                          value={billingCycle}
+                          onValueChange={(v) => setBillingCycle(v as 'monthly' | 'yearly')}
+                          className="mt-2 flex items-center gap-6"
+                        >
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="monthly" id="reg-monthly" />
+                            <Label htmlFor="reg-monthly" className="cursor-pointer text-sm font-medium">
+                              Monthly
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="yearly" id="reg-yearly" />
+                            <Label htmlFor="reg-yearly" className="cursor-pointer text-sm font-medium">
+                              Yearly
+                              <Badge variant="secondary" className="ml-2 text-xs bg-green-100 text-green-700">
+                                Save on yearly
+                              </Badge>
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {plansLoading ? (
+                        <div className="flex items-center justify-center py-10">
+                          <Loader2 className="h-6 w-6 animate-spin text-[#0b1440]" />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {plans.map((plan) => {
+                            const Icon = planIcons[plan.id] ?? Sparkles;
+                            const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
+                            const monthlyEquivalent =
+                              billingCycle === 'yearly' ? plan.price_yearly / 12 : plan.price_monthly;
+                            const isSelected = selectedPlan === plan.id;
+                            return (
+                              <button
+                                key={plan.id}
+                                type="button"
+                                onClick={() => setSelectedPlan(plan.id)}
+                                className={`w-full rounded-xl border p-4 text-left transition-all ${
+                                  isSelected
+                                    ? 'border-[#0b1440] bg-[#0b1440]/5 ring-1 ring-[#0b1440]'
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0b1440]/10 text-[#0b1440]">
+                                      <Icon className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
+                                      <p className="text-xs text-slate-500">
+                                        Up to {plan.max_employees} employees · {plan.max_departments} departments
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {isSelected && (
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0b1440]">
+                                      <Check className="h-3 w-3 text-white" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="mt-3 flex items-end justify-between">
+                                  <div>
+                                    {plan.price_monthly > 0 ? (
+                                      <>
+                                        <p className="text-lg font-bold text-slate-900">
+                                          ₦{formatPrice(monthlyEquivalent)}
+                                          <span className="text-xs font-normal text-slate-500">/month</span>
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                          {billingCycle === 'yearly'
+                                            ? `₦${formatPrice(plan.price_yearly)}/year`
+                                            : `₦${formatPrice(plan.price_yearly)}/year if billed annually`}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className="text-lg font-bold text-slate-900">
+                                        Free
+                                        <span className="text-xs font-normal text-slate-500"> forever</span>
+                                      </p>
+                                    )}
+                                  </div>
+                                  {plan.is_popular && (
+                                    <Badge className="bg-[#0b1440] text-white">Most Popular</Badge>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                 {error && (
                   <div className="mt-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -290,24 +472,31 @@ export default function RegisterPage() {
                 )}
 
                 <div className="mt-4 flex items-center gap-3">
-                  {step === 2 && (
-                    <Button type="button" variant="outline" onClick={() => { setStep(1); setError(''); }} className="h-11 rounded-lg">
+                  {(step === 2 || step === 3) && (
+                    <Button type="button" variant="outline" onClick={() => { setStep(step - 1); setError(''); }} className="h-11 rounded-lg">
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Back
                     </Button>
                   )}
 
-                  <Button type="submit" disabled={loading} className="h-11 flex-1 rounded-lg bg-[#0b1440] text-white hover:opacity-90">
+                  <Button type="submit" disabled={loading || (step === 3 && plansLoading)} className="h-11 flex-1 rounded-lg bg-[#0b1440] text-white hover:opacity-90">
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
+                        Processing...
                       </>
                     ) : step === 1 ? (
                       <>
                         Next
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </>
+                    ) : step === 2 ? (
+                      <>
+                        Continue
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    ) : isPaidPlan ? (
+                      'Proceed to Payment'
                     ) : (
                       'Create Account'
                     )}

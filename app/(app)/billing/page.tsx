@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useTenant } from '@/lib/tenant-context';
 import {
   getCurrentSubscription,
+  getSubscriptionRow,
   getOrgUsage,
   getInvoices,
   formatPrice,
@@ -34,7 +35,7 @@ import {
   ExternalLink,
   Shield,
 } from 'lucide-react';
-import { isFlutterwaveConfigured } from '@/lib/flutterwave';
+import { isPaystackConfigured } from '@/lib/paystack';
 
 export default function BillingPage() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function BillingPage() {
   const { organization } = useTenant();
 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [pendingSub, setPendingSub] = useState<{ plan_id: string; status: string; billing_cycle: string } | null>(null);
   const [usage, setUsage] = useState<OrgUsage | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -58,15 +60,17 @@ export default function BillingPage() {
 
     async function loadBillingData() {
       setLoadingData(true);
-      const [sub, usageData, invoiceData] = await Promise.all([
+      const [sub, rawSub, usageData, invoiceData] = await Promise.all([
         getCurrentSubscription(profile!.org_id),
+        getSubscriptionRow(profile!.org_id),
         getOrgUsage(profile!.org_id),
         getInvoices(profile!.org_id),
       ]);
       setSubscription(sub);
+      setPendingSub(rawSub?.status === 'pending' ? rawSub : null);
       setUsage(usageData);
       setInvoices(invoiceData);
-      setPaymentConfigured(isFlutterwaveConfigured());
+      setPaymentConfigured(isPaystackConfigured());
       setLoadingData(false);
     }
 
@@ -81,8 +85,9 @@ export default function BillingPage() {
     );
   }
 
-  const planName = subscription?.plan_name || (organization?.plan === 'enterprise' ? 'Enterprise' : organization?.plan === 'pro' ? 'Professional' : organization?.plan === 'starter' ? 'Starter' : 'Free');
-  const planStatus = subscription?.status || 'active';
+  const isPending = pendingSub !== null;
+  const planName = subscription?.plan_name || (organization?.plan === 'pro' ? 'Professional' : organization?.plan === 'starter' ? 'Starter' : 'Free');
+  const planStatus = subscription?.status || (isPending ? 'pending' : 'active');
   const employeeUsage = usage?.employee_count || 0;
   const employeeMax = usage?.plan_max_employees ?? organization?.max_employees ?? 10;
   const departmentUsage = usage?.department_count || 0;
@@ -140,6 +145,27 @@ export default function BillingPage() {
             </div>
           )}
 
+          {isPending && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-700">
+                  Your {planName} plan is awaiting payment.
+                </p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Complete your payment to unlock employee management and all plan features.{' '}
+                  <Button
+                    variant="link"
+                    className="h-auto p-0 text-xs text-amber-700 underline"
+                    onClick={() => router.push('/billing/upgrade')}
+                  >
+                    Pay now
+                  </Button>
+                </p>
+              </div>
+            </div>
+          )}
+
           {subscription && isPlanActive(subscription.status) && subscription.current_period_end && (() => {
             const daysUntilRenewal = Math.ceil(
               (new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
@@ -172,12 +198,12 @@ export default function BillingPage() {
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-[#051536]">{planName}</h3>
                 <Badge
-                  variant={isPlanActive(planStatus) ? 'default' : 'destructive'}
-                  className="text-xs"
+                  variant={isPending ? 'secondary' : isPlanActive(planStatus) ? 'default' : 'destructive'}
+                  className={isPending ? 'text-xs bg-amber-100 text-amber-700' : 'text-xs'}
                 >
                   {planStatus === 'active' && <CheckCircle2 className="mr-1 h-3 w-3" />}
                   {planStatus !== 'active' && <AlertCircle className="mr-1 h-3 w-3" />}
-                  {planStatus.charAt(0).toUpperCase() + planStatus.slice(1)}
+                  {isPending ? 'Awaiting Payment' : planStatus.charAt(0).toUpperCase() + planStatus.slice(1)}
                 </Badge>
               </div>
               {subscription && (
@@ -188,7 +214,11 @@ export default function BillingPage() {
               )}
               {!subscription && organization?.plan && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {organization.plan === 'free' ? 'Free plan — no payment required' : `Current plan: ${organization.plan}`}
+                  {isPending
+                    ? 'Payment pending — your plan activates once payment is confirmed.'
+                    : organization.plan === 'free'
+                    ? 'Free plan — no payment required'
+                    : `Current plan: ${organization.plan}`}
                 </p>
               )}
             </div>
@@ -355,7 +385,7 @@ export default function BillingPage() {
                 <CreditCard className={`h-5 w-5 ${paymentConfigured ? 'text-green-600' : 'text-amber-600'}`} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#051536]">Flutterwave</p>
+                <p className="text-sm font-medium text-[#051536]">Paystack</p>
                 <p className="text-xs text-muted-foreground">
                   {paymentConfigured ? 'Payment processing is active' : 'Not configured — contact support'}
                 </p>

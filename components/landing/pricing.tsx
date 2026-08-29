@@ -26,18 +26,16 @@ const plans = [
   {
     name: 'Starter',
     description: 'For growing teams that need more',
-    monthly: 29,
-    yearly: 290,
-    maxEmployees: '50',
-    maxDepartments: '10',
+    monthly: 8500,
+    yearly: 100000,
+    maxEmployees: '20',
+    maxDepartments: '5',
     features: [
-      'Up to 50 employees',
-      '10 departments',
+      'Up to 20 employees',
+      '5 departments',
       'Everything in Free',
-      'Payroll processing',
-      'Advanced reports',
-      'Custom branding',
-      'Priority support',
+      'Basic Payroll processing',
+      'Standard support',
     ],
     cta: 'Start Free Trial',
     popular: false,
@@ -45,42 +43,21 @@ const plans = [
   {
     name: 'Professional',
     description: 'For organizations that need it all',
-    monthly: 79,
-    yearly: 790,
-    maxEmployees: '200',
-    maxDepartments: '50',
+    monthly: 21500,
+    yearly: 250000,
+    maxEmployees: '50',
+    maxDepartments: '10',
     features: [
-      'Up to 200 employees',
-      '50 departments',
+      'Up to 50 employees',
+      '10 departments',
       'Everything in Starter',
-      'Multi-company support',
-      'Advanced payroll',
-      'Performance reviews',
-      'API access',
-      'Dedicated support',
+      'Payroll processing',
+      'Advanced reports',
+      'Custom branding',
+      'Priority support',
     ],
     cta: 'Start Free Trial',
     popular: true,
-  },
-  {
-    name: 'Enterprise',
-    description: 'For large organizations with custom needs',
-    monthly: 199,
-    yearly: 1990,
-    maxEmployees: 'Unlimited',
-    maxDepartments: 'Unlimited',
-    features: [
-      'Unlimited employees',
-      'Unlimited departments',
-      'Everything in Professional',
-      'Custom integrations',
-      'Dedicated account manager',
-      'SLA guarantee',
-      'SSO & SAML',
-      'On-premise option',
-    ],
-    cta: 'Contact Sales',
-    popular: false,
   },
 ];
 
@@ -102,7 +79,7 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
             <Card
               key={plan.name}
@@ -129,14 +106,19 @@ export function PricingSection() {
                   ) : (
                     <div className="flex items-baseline gap-1">
                       <span className="text-sm text-slate-400">₦</span>
-                      <span className="text-3xl font-semibold text-white">{plan.monthly}</span>
+                      <span className="text-3xl font-semibold text-white">{plan.monthly.toLocaleString()}</span>
                       <span className="text-sm text-slate-400">/month</span>
                     </div>
                   )}
                   {plan.monthly > 0 && (
                     <p className="mt-1 text-xs text-slate-400">
-                      ₦{plan.yearly}/year — save 2 months
+                      ₦{plan.yearly.toLocaleString()}/year
                     </p>
+                  )}
+                  {plan.monthly > 0 && plan.yearly < plan.monthly * 12 && (
+                    <span className="mt-2 inline-block rounded-full bg-[#059669]/15 px-2.5 py-0.5 text-xs font-medium text-[#34d399]">
+                      Save ₦{(plan.monthly * 12 - plan.yearly).toLocaleString()}/year
+                    </span>
                   )}
                 </div>
 

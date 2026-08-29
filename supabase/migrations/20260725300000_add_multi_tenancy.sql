@@ -52,7 +52,7 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS org_id UUID;
 -- ============================================================
 
 INSERT INTO organizations (id, name, slug, display_name, plan, max_employees)
-VALUES ('00000000-0000-0000-0000-000000000001', 'flowHR', 'flowhr', 'flowHR', 'enterprise', -1)
+VALUES ('00000000-0000-0000-0000-000000000001', 'flowHR', 'flowhr', 'flowHR', 'pro', 50)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================

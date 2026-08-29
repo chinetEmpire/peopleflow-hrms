@@ -66,7 +66,7 @@ The following features are present in the codebase:
 - Tenant context provider with subdomain detection
 - Dynamic branding (org name, logo, primary color)
 - Subscription & billing with plan enforcement
-- Flutterwave payment integration
+- Flutterwave payment integration (migrated to Paystack — see Phase 12)
 - Payroll management (schedules, compensation, payslips)
 - Super admin platform dashboard (orgs, users, audit logs)
 - Role-based access control enforced at API, database, and UI layers
@@ -354,3 +354,25 @@ Future updates should be added here whenever significant milestones are reached.
   - Settings page no longer sends `role` directly to Supabase client (removed from client-side update)
   - `create_organization_with_admin()` function changed to assign `hr_admin` instead of `super_admin`
   - Downgraded improperly elevated tenant account from super_admin to hr_admin
+
+## 2026-08-29
+
+- Phase: Pricing Rework — 3 Naira Tiers
+  - Reduced plans to Free (₦0), Starter (₦8,500/mo, ₦100,000/yr), Professional (₦21,500/mo, ₦250,000/yr)
+  - Removed Enterprise; existing enterprise subscriptions/orgs rebased to Professional
+  - Added yearly savings badges, tightened plan validation (VALID_PLANS) and organizations CHECK
+  - Updated landing, upgrade, billing, and admin pages to the 3-tier model
+- Phase: Pay-before-use Registration
+  - Registration now accepts plan + billing_cycle and creates a `pending` subscription for paid plans
+  - Paid-plan accounts stay locked until payment clears (check_subscription_active gates employee creation)
+  - Register page gained a plan-selection step; free plans go straight to /onboarding
+  - App shell + billing page show an "awaiting payment" banner with Pay Now CTA
+- Phase 12: Paystack Payment Integration (replaces Flutterwave)
+  - Created lib/paystack.ts SDK (checkout/initialize, verification, webhook signature, isConfigured)
+  - Swapped checkout API to Paystack (amounts in kobo, callback URL built server-side from BASE_URL)
+  - Rewrote webhook handler for `charge.success` with x-paystack-signature (HMAC SHA512, fail-closed)
+  - Added paystack_reference / paystack_customer_id tracking columns; payment_provider CHECK extended to 'paystack'
+  - Billing success page reads Paystack's `reference`/`trxref` redirect params
+  - Removed lib/flutterwave.ts; Flutterwave env keys no longer used
+  - PAYSTACK_SECRET_KEY / PAYSTACK_PUBLIC_KEY / PAYSTACK_WEBHOOK_SECRET documented in .env.example
+  - Dev fallback: paid plans auto-activate without payment until Paystack keys are configured

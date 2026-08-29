@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   plan_id TEXT NOT NULL REFERENCES plans(id),
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'past_due', 'canceled', 'trialing', 'paused')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'past_due', 'canceled', 'trialing', 'paused', 'pending')),
   billing_cycle TEXT NOT NULL DEFAULT 'monthly' CHECK (billing_cycle IN ('monthly', 'yearly')),
   current_period_start TIMESTAMPTZ NOT NULL DEFAULT now(),
   current_period_end TIMESTAMPTZ NOT NULL,
@@ -90,15 +90,15 @@ CREATE INDEX IF NOT EXISTS idx_invoices_org_id ON invoices(org_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 
 -- Seed default plans
-INSERT INTO plans (id, name, price_monthly, price_yearly, max_employees, max_departments, features, is_popular, sort_order) VALUES
-  ('free', 'Free', 0, 0, 10, 3, '["Employee Management", "Basic Attendance", "Time Off Requests", "Basic Reports"]'::jsonb, false, 1),
-  ('starter', 'Starter', 29, 290, 50, 10, '["Employee Management", "Attendance Tracking", "Leave Management", "Reports & Analytics", "Email Notifications", "Custom Branding"]'::jsonb, false, 2),
-  ('pro', 'Professional', 79, 790, 200, 50, '["Everything in Starter", "Advanced Reports", "Payroll Integration", "API Access", "Priority Support", "Multi-department"]'::jsonb, true, 3),
-  ('enterprise', 'Enterprise', 199, 1990, -1, -1, '["Everything in Pro", "Unlimited Employees", "Custom Integrations", "Dedicated Support", "SLA Guarantee", "SSO Authentication"]'::jsonb, false, 4)
+INSERT INTO plans (id, name, price_monthly, price_yearly, currency, max_employees, max_departments, features, is_popular, sort_order) VALUES
+  ('free', 'Free', 0, 0, 'NGN', 10, 3, '["Attendance tracking", "Basic leave management", "Employee profiles", "Standard support"]'::jsonb, false, 1),
+  ('starter', 'Starter', 8500, 100000, 'NGN', 20, 5, '["Everything in Free", "Basic Payroll processing", "Standard support"]'::jsonb, false, 2),
+  ('pro', 'Professional', 21500, 250000, 'NGN', 50, 10, '["Everything in Starter", "Payroll processing", "Advanced reports", "Custom branding", "Priority support"]'::jsonb, true, 3)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   price_monthly = EXCLUDED.price_monthly,
   price_yearly = EXCLUDED.price_yearly,
+  currency = EXCLUDED.currency,
   max_employees = EXCLUDED.max_employees,
   max_departments = EXCLUDED.max_departments,
   features = EXCLUDED.features,

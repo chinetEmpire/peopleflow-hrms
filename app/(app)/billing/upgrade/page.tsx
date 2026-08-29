@@ -13,7 +13,7 @@ import {
   type Plan,
   type Subscription,
 } from '@/lib/billing';
-import { isFlutterwaveConfigured } from '@/lib/flutterwave';
+import { isPaystackConfigured } from '@/lib/paystack';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +26,6 @@ import {
   Sparkles,
   Zap,
   Crown,
-  Building2,
   CreditCard,
   AlertCircle,
 } from 'lucide-react';
@@ -36,7 +35,6 @@ const planIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   free: Sparkles,
   starter: Zap,
   pro: Crown,
-  enterprise: Building2,
 };
 
 export default function UpgradePage() {
@@ -79,7 +77,7 @@ export default function UpgradePage() {
   }, [profile?.org_id, organization?.plan]);
 
   useEffect(() => {
-    setPaymentConfigured(isFlutterwaveConfigured());
+    setPaymentConfigured(isPaystackConfigured());
   }, []);
 
   async function handleUpgrade() {
@@ -121,7 +119,7 @@ export default function UpgradePage() {
       return;
     }
 
-    // Paid plan — initiate Flutterwave checkout
+    // Paid plan — initiate Paystack checkout
     if (!paymentConfigured) {
       toast.info('Payment gateway not active. Activating plan directly.');
       setUpgrading(true);
@@ -212,7 +210,7 @@ export default function UpgradePage() {
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3">
           <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
           <p className="text-xs text-amber-700">
-            Payment gateway (Flutterwave) is not configured. Plans will be activated without payment.
+            Payment gateway (Paystack) is not configured. Plans will be activated without payment.
           </p>
         </div>
       )}
@@ -233,7 +231,7 @@ export default function UpgradePage() {
             <Label htmlFor="yearly" className="text-sm font-medium cursor-pointer">
               Yearly
               <Badge variant="secondary" className="ml-2 text-xs bg-green-100 text-green-700">
-                Save ~17%
+                Save on yearly
               </Badge>
             </Label>
           </div>
@@ -241,14 +239,14 @@ export default function UpgradePage() {
       </div>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.map((plan) => {
           const Icon = planIcons[plan.id] || Sparkles;
           const price = billingCycle === 'yearly' ? plan.price_yearly : plan.price_monthly;
           const monthlyEquivalent = billingCycle === 'yearly' ? plan.price_yearly / 12 : plan.price_monthly;
+          const yearlySavings = plan.price_monthly * 12 - plan.price_yearly;
           const isSelected = selectedPlan === plan.id;
           const isCurrent = currentSub?.plan_id === plan.id || (!currentSub && organization?.plan === plan.id);
-          const isEnterprise = plan.max_employees === -1;
 
           return (
             <Card
@@ -281,7 +279,7 @@ export default function UpgradePage() {
                   <span className="text-sm text-muted-foreground">/month</span>
                   {billingCycle === 'yearly' && plan.price_yearly > 0 && (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatPrice(price)}/year
+                      {formatPrice(price)}/year · save {formatPrice(yearlySavings)}
                     </p>
                   )}
                 </div>
@@ -289,11 +287,11 @@ export default function UpgradePage() {
                 <div className="space-y-2 text-sm text-[#051536]">
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500 shrink-0" />
-                    <span>{isEnterprise ? 'Unlimited' : formatLimit(plan.max_employees)} employees</span>
+                    <span>{formatLimit(plan.max_employees)} employees</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-green-500 shrink-0" />
-                    <span>{isEnterprise ? 'Unlimited' : formatLimit(plan.max_departments)} departments</span>
+                    <span>{formatLimit(plan.max_departments)} departments</span>
                   </div>
                   {plan.features.slice(0, 4).map((feature) => (
                     <div key={feature} className="flex items-center gap-2">

@@ -3,7 +3,7 @@ import { type Role } from './supabase';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const VALID_ROLES: Role[] = ['employee', 'manager', 'hr_admin', 'super_admin'];
-export const VALID_PLANS = ['free', 'starter', 'pro', 'enterprise'] as const;
+export const VALID_PLANS = ['free', 'starter', 'pro'] as const;
 export const VALID_BILLING_CYCLES = ['monthly', 'yearly'] as const;
 export const VALID_INVOICE_STATUSES = ['pending', 'paid', 'failed', 'refunded', 'void'] as const;
 export const MIN_PASSWORD_LENGTH = 8;

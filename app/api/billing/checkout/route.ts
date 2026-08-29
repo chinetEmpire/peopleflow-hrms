@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateTxRef, createFlutterwaveCheckout, isFlutterwaveConfigured } from '@/lib/flutterwave';
+import { generatePaymentReference, createPaystackCheckout, isPaystackConfigured } from '@/lib/paystack';
 import { getSupabaseAdmin, verifyHrAdmin } from '@/lib/supabase-admin';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { user, profile } = auth;
 
-    if (!isFlutterwaveConfigured()) {
+    if (!isPaystackConfigured()) {
       return NextResponse.json({
         error: 'Payment gateway not configured. Please contact support.',
         notConfigured: true,
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { plan_id, billing_cycle } = body;
+    const { plan_id, billing_cycle, from_register } = body;
 
     if (!plan_id) {
       return NextResponse.json({ error: 'Missing plan_id' }, { status: 400 });
@@ -52,17 +52,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Free plan does not require payment' }, { status: 400 });
     }
 
-    const txRef = generateTxRef();
+    const reference = generatePaymentReference();
     const email = profile.email;
     const name = `${profile.first_name} ${profile.last_name}`.trim();
 
-    const result = await createFlutterwaveCheckout({
+    // Paystack requires an absolute callback URL. Always point it at our own
+    // configured base URL so registrants land back on the setup flow.
+    const callbackUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/billing/success${from_register === true ? '?from=register' : ''}`;
+
+    const result = await createPaystackCheckout({
       amount,
       currency: plan.currency ?? 'NGN',
       email,
       name,
-      txRef,
+      reference,
       planName: plan.name,
+      callbackUrl,
     });
 
     if (!result) {
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
       action: 'initiate_payment',
       entity: 'subscription',
       details: {
-        tx_ref: txRef,
+        tx_ref: result.reference,
         plan_id,
         billing_cycle: cycle,
         amount,
@@ -86,8 +91,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      checkout_url: result.checkoutUrl,
-      tx_ref: txRef,
+      checkout_url: result.authorizationUrl,
+      tx_ref: result.reference,
     });
   } catch (err) {
     console.error('Checkout error:', err);

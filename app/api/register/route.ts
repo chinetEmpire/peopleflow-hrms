@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin, verifyToken } from '@/lib/supabase-admin';
-import { isValidPassword } from '@/lib/validation';
+import { isValidPassword, isValidPlan, isValidBillingCycle } from '@/lib/validation';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 function generateSlug(name: string): string {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { orgName, adminEmail, adminFirstName, adminLastName, adminPassword } = body;
+    const { orgName, adminEmail, adminFirstName, adminLastName, adminPassword, plan, billing_cycle } = body;
 
     if (!orgName || !adminEmail || !adminFirstName || !adminLastName || !adminPassword) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
@@ -59,7 +59,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: passwordCheck.error }, { status: 400 });
     }
 
+    const selectedPlan = isValidPlan(plan) ? plan : 'free';
+    const billingCycle = isValidBillingCycle(billing_cycle) ? billing_cycle : 'monthly';
+
     const supabaseAdmin = getSupabaseAdmin();
+
+    // Load the selected plan so org limits + subscription can be created correctly
+    const { data: planRow, error: planErr } = await supabaseAdmin
+      .from('plans')
+      .select('id, name, price_monthly, price_yearly, max_employees')
+      .eq('id', selectedPlan)
+      .single();
+
+    if (planErr || !planRow) {
+      return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+    }
 
     // Verify caller — self-registration always gets hr_admin only
     // Never allow super_admin via self-registration
@@ -84,13 +98,40 @@ export async function POST(req: Request) {
       .insert({
         name: orgName,
         slug: orgSlug,
-        plan: 'free',
-        max_employees: 10,
+        plan: planRow.id,
+        max_employees: planRow.max_employees,
       })
       .select()
       .single();
 
     if (orgError) throw orgError;
+
+    // Create a subscription row — 'active' for free, 'pending' for paid plans
+    // so the org is locked until payment clears (see check_subscription_active)
+    const now = new Date();
+    const periodEnd = new Date(now);
+    if (billingCycle === 'monthly') {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    } else {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    }
+
+    const isPaidPlan = planRow.price_monthly > 0 || planRow.price_yearly > 0;
+
+    const { error: subError } = await supabaseAdmin.from('subscriptions').insert({
+      org_id: orgData.id,
+      plan_id: planRow.id,
+      status: isPaidPlan ? 'pending' : 'active',
+      billing_cycle: billingCycle,
+      current_period_start: now.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      payment_provider: isPaidPlan ? null : 'manual',
+    });
+
+    if (subError) {
+      await supabaseAdmin.from('organizations').delete().eq('id', orgData.id);
+      throw subError;
+    }
 
     // Create the admin user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -136,6 +177,8 @@ export async function POST(req: Request) {
       success: true,
       orgId: orgData.id,
       userId: authData.user.id,
+      plan: planRow.id,
+      requires_payment: isPaidPlan,
     });
   } catch (err) {
     console.error('Registration error:', err);

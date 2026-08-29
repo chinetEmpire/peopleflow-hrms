@@ -20,6 +20,8 @@ export function getSupabase(): SupabaseClient {
 
 export type Role = 'employee' | 'manager' | 'hr_admin' | 'super_admin';
 
+export type PlanId = 'free' | 'starter' | 'pro';
+
 export interface Organization {
   id: string;
   name: string;
@@ -27,7 +29,7 @@ export interface Organization {
   display_name: string | null;
   logo_url: string | null;
   primary_color: string;
-  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  plan: PlanId;
   max_employees: number;
   created_by: string | null;
   created_at: string;

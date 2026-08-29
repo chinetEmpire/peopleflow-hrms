@@ -27,8 +27,7 @@ export function LandingNavbar() {
     >
       <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.png" alt="flowHR" className="h-9 w-auto" />
-          <span className="text-lg font-semibold tracking-tight text-white">flowHR</span>
+          <img src="/logo.png" alt="flowHR" className="h-9 w-auto rounded-lg" />
         </Link>
 
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-200">

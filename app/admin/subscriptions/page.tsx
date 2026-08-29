@@ -53,13 +53,13 @@ const statusColors: Record<string, string> = {
   past_due: 'bg-amber-100 text-amber-700',
   canceled: 'bg-red-100 text-red-700',
   paused: 'bg-gray-100 text-gray-700',
+  pending: 'bg-amber-100 text-amber-700',
 };
 
 const planBadge: Record<string, string> = {
   free: 'bg-gray-100 text-gray-700',
   starter: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
-  enterprise: 'bg-amber-100 text-amber-700',
 };
 
 export default function AdminSubscriptionsPage() {
@@ -217,7 +217,6 @@ export default function AdminSubscriptionsPage() {
             <option value="free">Free</option>
             <option value="starter">Starter</option>
             <option value="pro">Professional</option>
-            <option value="enterprise">Enterprise</option>
           </select>
           <Button variant="outline" size="sm" className="rounded-lg" onClick={loadSubscriptions}>
             <ArrowUpDown className="mr-1 h-3 w-3" />

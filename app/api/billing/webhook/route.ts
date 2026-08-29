@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
-import { verifyWebhookSignature, verifyFlutterwaveTransaction, type FlutterwaveTransaction } from '@/lib/flutterwave';
+import { verifyWebhookSignature, verifyPaystackTransaction, type PaystackTransaction } from '@/lib/paystack';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
-async function fulfillOrder(supabase: SupabaseClient, txRef: string, transaction: FlutterwaveTransaction) {
+async function fulfillOrder(supabase: SupabaseClient, reference: string, transaction: PaystackTransaction) {
   // Check if already fulfilled
   const { data: existing } = await supabase
     .from('audit_logs')
     .select('id')
     .eq('entity', 'payment')
-    .eq('entity_id', txRef)
+    .eq('entity_id', reference)
     .eq('action', 'payment_success')
     .maybeSingle();
 
@@ -24,13 +24,13 @@ async function fulfillOrder(supabase: SupabaseClient, txRef: string, transaction
     .select('org_id, details')
     .eq('entity', 'subscription')
     .eq('action', 'initiate_payment')
-    .contains('details', { tx_ref: txRef })
+    .contains('details', { tx_ref: reference })
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!pendingLog || !pendingLog.org_id) {
-    console.error('No pending payment found for tx_ref:', txRef);
+    console.error('No pending payment found for reference:', reference);
     return { error: 'No pending payment found' };
   }
 
@@ -58,10 +58,10 @@ async function fulfillOrder(supabase: SupabaseClient, txRef: string, transaction
       billing_cycle: billingCycle,
       current_period_start: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
-      payment_provider: 'flutterwave',
-      external_subscription_id: txRef,
-      flutterwave_tx_ref: txRef,
-      flutterwave_customer_id: String(transaction.customer.id),
+      payment_provider: 'paystack',
+      external_subscription_id: reference,
+      paystack_reference: reference,
+      paystack_customer_id: transaction.customer ? String(transaction.customer.id) : null,
       canceled_at: null,
       updated_at: now.toISOString(),
     }, { onConflict: 'org_id' });
@@ -89,19 +89,18 @@ async function fulfillOrder(supabase: SupabaseClient, txRef: string, transaction
       .eq('id', orgId);
   }
 
-  // Create invoice
+  // Create invoice (Paystack amounts are in kobo, divide by 100 for naira)
   await supabase.from('invoices').insert({
     org_id: orgId,
-    amount: transaction.amount,
-    currency: transaction.currency,
+    amount: transaction.amount / 100,
+    currency: transaction.currency ?? 'NGN',
     status: 'paid',
     description: `${billingCycle} ${planId} plan payment`,
     invoice_date: now.toISOString(),
     paid_at: now.toISOString(),
-    payment_provider: 'flutterwave',
-    external_invoice_id: transaction.flw_ref,
-    flutterwave_tx_ref: txRef,
-    flutterwave_flw_ref: transaction.flw_ref,
+    payment_provider: 'paystack',
+    external_invoice_id: String(transaction.id),
+    paystack_reference: reference,
   });
 
   // Log success
@@ -110,11 +109,11 @@ async function fulfillOrder(supabase: SupabaseClient, txRef: string, transaction
     org_id: orgId,
     action: 'payment_success',
     entity: 'payment',
-    entity_id: txRef,
+    entity_id: reference,
     details: {
-      flw_ref: transaction.flw_ref,
-      amount: transaction.amount,
-      currency: transaction.currency,
+      paystack_tx_id: transaction.id,
+      amount: transaction.amount / 100,
+      currency: transaction.currency ?? 'NGN',
       plan_id: planId,
       billing_cycle: billingCycle,
     },
@@ -135,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rawBody = await req.text();
-    const signature = req.headers.get('flutterwave-signature');
+    const signature = req.headers.get('x-paystack-signature');
 
     if (!verifyWebhookSignature(rawBody, signature)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
@@ -143,19 +142,19 @@ export async function POST(req: NextRequest) {
 
     const event = JSON.parse(rawBody);
 
-    if (event.event === 'charge.completed') {
-      const transaction: FlutterwaveTransaction = event.data;
-      const txRef = transaction.tx_ref;
+    if (event.event === 'charge.success') {
+      const transaction: PaystackTransaction = event.data;
+      const reference = transaction.reference;
 
-      // Verify the transaction with Flutterwave
-      const verified = await verifyFlutterwaveTransaction(txRef);
-      if (!verified || verified.status !== 'successful') {
-        console.error('Transaction verification failed for:', txRef);
+      // Verify the transaction with Paystack
+      const verified = await verifyPaystackTransaction(reference);
+      if (!verified || verified.status !== 'success') {
+        console.error('Transaction verification failed for:', reference);
         return NextResponse.json({ error: 'Verification failed' }, { status: 400 });
       }
 
       const supabase = getSupabaseAdmin();
-      const result = await fulfillOrder(supabase, txRef, verified);
+      const result = await fulfillOrder(supabase, reference, verified);
 
       return NextResponse.json({ received: true, ...result });
     }

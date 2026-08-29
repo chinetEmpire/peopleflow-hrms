@@ -19,7 +19,7 @@ export interface Subscription {
   subscription_id: string;
   plan_id: string;
   plan_name: string;
-  status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'paused';
+  status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'paused' | 'pending';
   billing_cycle: 'monthly' | 'yearly';
   current_period_start: string;
   current_period_end: string;
@@ -84,6 +84,24 @@ export function getUsagePercentage(current: number, max: number): number {
 
 export function isPlanActive(status: Subscription['status']): boolean {
   return status === 'active' || status === 'trialing';
+}
+
+/**
+ * Get the raw subscription row (including non-active statuses like 'pending')
+ */
+export async function getSubscriptionRow(orgId: string): Promise<{
+  plan_id: string;
+  status: string;
+  billing_cycle: string;
+} | null> {
+  const { data, error } = await getSupabase()
+    .from('subscriptions')
+    .select('plan_id, status, billing_cycle')
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as { plan_id: string; status: string; billing_cycle: string };
 }
 
 // ─── Database Functions ──────────────────────────────────────────────────────

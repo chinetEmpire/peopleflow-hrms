@@ -59,9 +59,8 @@ interface OrgMember {
 
 const PLANS = [
   { value: 'free', label: 'Free', maxEmployees: 10 },
-  { value: 'starter', label: 'Starter', maxEmployees: 50 },
-  { value: 'pro', label: 'Professional', maxEmployees: 200 },
-  { value: 'enterprise', label: 'Enterprise', maxEmployees: -1 },
+  { value: 'starter', label: 'Starter', maxEmployees: 20 },
+  { value: 'pro', label: 'Professional', maxEmployees: 50 },
 ];
 
 const statusColors: Record<string, string> = {
@@ -219,7 +218,6 @@ export default function AdminOrganizationDetailPage() {
     free: 'bg-gray-100 text-gray-700',
     starter: 'bg-blue-100 text-blue-700',
     pro: 'bg-purple-100 text-purple-700',
-    enterprise: 'bg-amber-100 text-amber-700',
   };
 
   const roleBadge: Record<string, string> = {
