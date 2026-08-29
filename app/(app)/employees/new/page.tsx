@@ -447,9 +447,9 @@ function AddEmployeeForm() {
               label="Role"
               value={form.role}
               onChange={(v) => update('role', v as Role)}
-              options={['employee', 'manager', 'hr_admin', 'super_admin']}
+              options={['employee', 'manager', 'hr_admin']}
               placeholder="Select role"
-              displayMap={{ employee: 'Employee', manager: 'Manager', hr_admin: 'HR Admin', super_admin: 'Super Admin' }}
+              displayMap={{ employee: 'Employee', manager: 'Manager', hr_admin: 'HR Admin' }}
             />
             <div className="space-y-2">
               <Label>Manager</Label>

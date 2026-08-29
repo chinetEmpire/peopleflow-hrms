@@ -24,6 +24,7 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
+  display_name: string | null;
   logo_url: string | null;
   primary_color: string;
   plan: 'free' | 'starter' | 'pro' | 'enterprise';

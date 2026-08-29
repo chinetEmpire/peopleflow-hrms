@@ -629,8 +629,8 @@ export default function SettingsPage() {
                   label="Role"
                   value={profileForm.role}
                   onChange={(v) => setProfileForm({ ...profileForm, role: v as Role })}
-                  options={['Employee', 'Manager', 'HR Admin', 'Super Admin']}
-                  optionValues={['employee', 'manager', 'hr_admin', 'super_admin']}
+                  options={['Employee', 'Manager', 'HR Admin']}
+                  optionValues={['employee', 'manager', 'hr_admin']}
                   readOnly={!canEditWorkInfo}
                 />
                 <div className="space-y-2">

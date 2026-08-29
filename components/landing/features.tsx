@@ -64,19 +64,20 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-20 sm:py-28 bg-white">
+    <section id="features" className="relative py-20 sm:py-28 bg-[#020316] text-white">
+      <div className="pointer-events-none absolute right-0 top-10 h-64 w-64 rounded-full bg-[#60a5fa]/10 blur-3xl" />
+      <div className="pointer-events-none absolute left-0 bottom-0 h-72 w-72 rounded-full bg-[#ec4899]/10 blur-3xl" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-sm font-medium text-[#032364] uppercase tracking-wider mb-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#60a5fa] mb-3">
               One Platform for Your Entire Workforce
             </p>
-            <h2 className="text-3xl font-bold text-[#051536] sm:text-4xl">
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
               Everything You Need in One Platform
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Our HR platform brings every HR process into one secure cloud system, making it easier
-              to manage your employees from anywhere.
+            <p className="mt-4 text-lg leading-8 text-slate-300">
+              Our HR platform brings every HR process into one secure cloud system, making it easier to manage your employees from anywhere.
             </p>
           </div>
         </FadeIn>
@@ -84,10 +85,10 @@ export function FeaturesSection() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((feature, i) => (
             <StaggerItem key={feature.title} delay={i * 80}>
-              <Card className="group h-full rounded-2xl border border-border/50 bg-white hover:shadow-xl hover:shadow-[#032364]/5 transition-all duration-300 hover:-translate-y-1">
+              <Card className="group h-full rounded-[2rem] border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:shadow-2xl hover:shadow-slate-950/20">
                 <CardContent className="p-7">
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
+                    className="flex h-14 w-14 items-center justify-center rounded-3xl transition-transform duration-300 group-hover:scale-105"
                     style={{ backgroundColor: feature.color + '12' }}
                   >
                     <feature.icon
@@ -95,10 +96,10 @@ export function FeaturesSection() {
                       style={{ color: feature.color }}
                     />
                   </div>
-                  <h3 className="mt-5 text-lg font-semibold text-[#051536]">
+                  <h3 className="mt-5 text-lg font-semibold text-white">
                     {feature.title}
                   </h3>
-                  <p className="mt-2.5 text-sm text-muted-foreground leading-relaxed">
+                  <p className="mt-2.5 text-sm leading-relaxed text-slate-300">
                     {feature.description}
                   </p>
                 </CardContent>

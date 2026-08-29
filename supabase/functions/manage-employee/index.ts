@@ -35,15 +35,20 @@ Deno.serve(async (req: Request) => {
 
     const callerId = userData.user.id;
 
-    // Get caller profile to check role
+    // Get caller profile to check role and org
     const { data: callerProfile } = await adminClient
       .from("profiles")
-      .select("role")
+      .select("role, org_id")
       .eq("id", callerId)
       .maybeSingle();
 
     if (!callerProfile || (callerProfile.role !== "hr_admin" && callerProfile.role !== "super_admin")) {
       return errorResponse("Only HR admins or super admins can manage employees", 403);
+    }
+
+    const callerOrgId = callerProfile.org_id;
+    if (!callerOrgId) {
+      return errorResponse("Caller is not associated with an organization", 400);
     }
 
     const body = await req.json();
@@ -82,7 +87,7 @@ Deno.serve(async (req: Request) => {
         email,
         password,
         email_confirm: true,
-        user_metadata: { first_name, last_name, role: finalRole },
+        user_metadata: { first_name, last_name, role: finalRole, org_id: callerOrgId },
       });
 
       if (authErr) throw authErr;
@@ -91,6 +96,7 @@ Deno.serve(async (req: Request) => {
       // Upsert profile
       const { error: profErr } = await adminClient.from("profiles").upsert({
         id: userId,
+        org_id: callerOrgId,
         employee_id: employee_id || null,
         first_name,
         last_name,
@@ -123,6 +129,7 @@ Deno.serve(async (req: Request) => {
       // Audit log
       await adminClient.from("audit_logs").insert({
         actor_id: callerId,
+        org_id: callerOrgId,
         action: "create",
         entity: "employee",
         entity_id: userId,
@@ -145,7 +152,8 @@ Deno.serve(async (req: Request) => {
           ...profileUpdates,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("org_id", callerOrgId);
 
       if (profErr) throw profErr;
 
@@ -158,6 +166,7 @@ Deno.serve(async (req: Request) => {
       // Audit log
       await adminClient.from("audit_logs").insert({
         actor_id: callerId,
+        org_id: callerOrgId,
         action: "update",
         entity: "employee",
         entity_id: id,
@@ -176,6 +185,7 @@ Deno.serve(async (req: Request) => {
 
       await adminClient.from("audit_logs").insert({
         actor_id: callerId,
+        org_id: callerOrgId,
         action: "delete",
         entity: "employee",
         entity_id: id,

@@ -43,6 +43,8 @@ export function useAttendanceReminders(
           'Good Morning!',
           'Time to check in for today. Tap the attendance page to get started.',
           'check_in_reminder',
+          {},
+          profile.org_id,
         );
       }
     }
@@ -56,6 +58,8 @@ export function useAttendanceReminders(
           'Time to Check Out',
           "You checked in today but haven't checked out yet. Don't forget to clock out!",
           'check_out_reminder',
+          {},
+          profile.org_id,
         );
       }
     }

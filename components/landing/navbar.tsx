@@ -19,40 +19,40 @@ export function LandingNavbar() {
   return (
     <header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
+        'relative transition-all duration-300',
         scrolled
-          ? 'bg-white/80 backdrop-blur-xl shadow-sm border-b border-border/50'
+          ? 'bg-slate-950/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.16)] border-b border-white/10'
           : 'bg-transparent'
       )}
     >
-      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#032364]">
+      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#60a5fa] to-[#ec4899] shadow-lg shadow-[#60a5fa]/20">
             <Building2 className="h-5 w-5 text-white" />
           </div>
-          <span className="text-lg font-bold text-[#051536]">HR Platform</span>
+          <span className="text-lg font-semibold tracking-tight text-white">HR Platform</span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm text-muted-foreground hover:text-[#051536] transition-colors">
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-200">
+          <a href="#features" className="transition-colors hover:text-white">
             Features
           </a>
-          <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-[#051536] transition-colors">
+          <a href="#how-it-works" className="transition-colors hover:text-white">
             How It Works
           </a>
-          <a href="#pricing" className="text-sm text-muted-foreground hover:text-[#051536] transition-colors">
+          <a href="#pricing" className="transition-colors hover:text-white">
             Pricing
           </a>
         </div>
 
         <div className="hidden md:flex items-center gap-3">
           <Link href="/login">
-            <Button variant="ghost" className="rounded-lg text-[#032364]">
+            <Button variant="ghost" className="rounded-2xl border border-white/10 text-white hover:bg-white/10">
               Sign In
             </Button>
           </Link>
           <Link href="/register">
-            <Button className="rounded-lg bg-[#032364] hover:bg-[#032364]/90 text-white">
+            <Button className="rounded-2xl bg-gradient-to-r from-[#60a5fa] to-[#ec4899] text-white shadow-lg shadow-[#60a5fa]/20 hover:brightness-105">
               Get Started
             </Button>
           </Link>
@@ -61,7 +61,7 @@ export function LandingNavbar() {
         <Button
           variant="ghost"
           size="sm"
-          className="md:hidden rounded-lg"
+          className="md:hidden rounded-lg text-white"
           onClick={() => setMobileOpen(!mobileOpen)}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -69,25 +69,25 @@ export function LandingNavbar() {
       </nav>
 
       {mobileOpen && (
-        <div className="md:hidden bg-white border-b border-border/50 shadow-lg">
+        <div className="md:hidden bg-slate-950 border-t border-white/10 shadow-2xl shadow-black/25">
           <div className="px-4 py-4 space-y-3">
-            <a href="#features" className="block text-sm text-muted-foreground hover:text-[#051536] py-2" onClick={() => setMobileOpen(false)}>
+            <a href="#features" className="block rounded-2xl px-4 py-3 text-sm text-slate-200 hover:bg-white/5" onClick={() => setMobileOpen(false)}>
               Features
             </a>
-            <a href="#how-it-works" className="block text-sm text-muted-foreground hover:text-[#051536] py-2" onClick={() => setMobileOpen(false)}>
+            <a href="#how-it-works" className="block rounded-2xl px-4 py-3 text-sm text-slate-200 hover:bg-white/5" onClick={() => setMobileOpen(false)}>
               How It Works
             </a>
-            <a href="#pricing" className="block text-sm text-muted-foreground hover:text-[#051536] py-2" onClick={() => setMobileOpen(false)}>
+            <a href="#pricing" className="block rounded-2xl px-4 py-3 text-sm text-slate-200 hover:bg-white/5" onClick={() => setMobileOpen(false)}>
               Pricing
             </a>
-            <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
+            <div className="flex flex-col gap-2 pt-2">
               <Link href="/login" onClick={() => setMobileOpen(false)}>
-                <Button variant="ghost" className="w-full rounded-lg text-[#032364]">
+                <Button variant="ghost" className="w-full rounded-2xl text-white border border-white/10 hover:bg-white/5">
                   Sign In
                 </Button>
               </Link>
               <Link href="/register" onClick={() => setMobileOpen(false)}>
-                <Button className="w-full rounded-lg bg-[#032364] hover:bg-[#032364]/90 text-white">
+                <Button className="w-full rounded-2xl bg-gradient-to-r from-[#60a5fa] to-[#ec4899] text-white hover:brightness-105">
                   Get Started
                 </Button>
               </Link>

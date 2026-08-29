@@ -168,7 +168,7 @@ export default function OnboardingPage() {
             <PartyPopper className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#032364]">
-            Welcome to {organization?.name || 'Your Organization'}!
+            Welcome to {organization?.display_name || organization?.name || 'Your Organization'}!
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Let&apos;s set up your HR platform (you can skip this and do it later)

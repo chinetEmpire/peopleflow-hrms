@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useTenant } from '@/lib/tenant-context';
 import { getSupabase } from '@/lib/supabase';
@@ -23,18 +23,44 @@ const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
 
 export function BrandingTab() {
   const { profile, refreshProfile } = useAuth();
-  const { organization, refreshOrganization } = useTenant();
+  const { organization, loading: orgLoading, refreshOrganization } = useTenant();
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [orgName, setOrgName] = useState(organization?.name || '');
-  const [primaryColor, setPrimaryColor] = useState(organization?.primary_color || '#032364');
-  const [logoPreview, setLogoPreview] = useState<string | null>(organization?.logo_url || null);
+  const [orgName, setOrgName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#032364');
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isHr = profile?.role === 'hr_admin' || profile?.role === 'super_admin';
 
-  if (!isHr || !organization) return null;
+  useEffect(() => {
+    if (organization) {
+      setOrgName(organization.name || '');
+      setDisplayName(organization.display_name || '');
+      setPrimaryColor(organization.primary_color || '#032364');
+      setLogoPreview(organization.logo_url || null);
+    }
+  }, [organization]);
+
+  if (!isHr) return null;
+
+  if (orgLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">Loading branding settings...</span>
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-sm text-muted-foreground">Organization data not available.</p>
+      </div>
+    );
+  }
 
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -98,6 +124,7 @@ export function BrandingTab() {
 
       await updateOrganization(organization.id, {
         name: orgName.trim(),
+        display_name: displayName.trim() || null,
         primary_color: primaryColor,
         logo_url: logoUrl,
       });
@@ -126,6 +153,8 @@ export function BrandingTab() {
       toast.error('Failed to remove logo');
     }
   }
+
+  const previewName = displayName.trim() || orgName.trim() || 'Organization';
 
   return (
     <div className="space-y-6">
@@ -201,29 +230,44 @@ export function BrandingTab() {
         </CardContent>
       </Card>
 
-      {/* Organization Name */}
+      {/* Organization Name + Display Name */}
       <Card className="rounded-xl border-0 bg-white vcgl-shadow">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#032364]/10">
               <Building2 className="h-5 w-5 text-[#032364]" />
             </div>
-            <CardTitle className="text-sm font-semibold text-[#051536]">Organization Name</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[#051536]">Organization Details</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 max-w-md">
-            <Label htmlFor="org-name">Name</Label>
-            <Input
-              id="org-name"
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              placeholder="Organization name"
-              className="rounded-lg border-[#0000004c]"
-            />
-            <p className="text-xs text-muted-foreground">
-              This is displayed across the platform and on the login page.
-            </p>
+          <div className="space-y-4 max-w-md">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Company Name</Label>
+              <Input
+                id="org-name"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                placeholder="e.g. Acme Corporation"
+                className="rounded-lg"
+              />
+              <p className="text-xs text-muted-foreground">
+                The legal or official name of your organization.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="display-name">Display Name</Label>
+              <Input
+                id="display-name"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Acme"
+                className="rounded-lg"
+              />
+              <p className="text-xs text-muted-foreground">
+                A shorter name shown in the sidebar and header. Falls back to company name if empty.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -285,15 +329,21 @@ export function BrandingTab() {
             <div className="rounded-lg border p-4">
               <p className="text-xs text-muted-foreground mb-3">Preview</p>
               <div className="flex items-center gap-3">
-                <div
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-white text-sm font-medium"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  A
-                </div>
+                {logoPreview ? (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden bg-white border">
+                    <img src={logoPreview} alt="Logo" className="h-full w-full object-contain" />
+                  </div>
+                ) : (
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-white text-sm font-medium"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {previewName[0]}
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-medium" style={{ color: primaryColor }}>
-                    {orgName || 'Organization'}
+                    {previewName}
                   </p>
                   <p className="text-xs text-muted-foreground">hr.yourcompany.com</p>
                 </div>

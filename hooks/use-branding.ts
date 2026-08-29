@@ -87,7 +87,7 @@ export function useBranding() {
   return {
     primaryColor,
     cssVariables,
-    orgName: organization?.name || 'HR Platform',
+    orgName: organization?.display_name || organization?.name || 'HR Platform',
     orgLogo: organization?.logo_url || null,
   };
 }

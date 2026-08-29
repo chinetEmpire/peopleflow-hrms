@@ -23,35 +23,36 @@ const problems = [
 
 export function ProblemSection() {
   return (
-    <section className="py-20 sm:py-28 bg-[#f2e9e9]/50">
+    <section className="relative overflow-hidden py-20 sm:py-28 bg-slate-950 text-white">
+      <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-[#60a5fa]/10 blur-3xl" />
+      <div className="pointer-events-none absolute left-0 bottom-0 h-64 w-64 rounded-full bg-[#ec4899]/10 blur-3xl" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
+        <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
           <FadeIn>
-            <div>
-              <p className="text-sm font-medium text-[#032364] uppercase tracking-wider mb-3">
+            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-10 shadow-2xl shadow-slate-950/40">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[#60a5fa] mb-3">
                 The Problem
               </p>
-              <h2 className="text-3xl font-bold text-[#051536] sm:text-4xl">
+              <h2 className="text-3xl font-semibold text-white sm:text-4xl">
                 HR Shouldn&apos;t Be This Difficult
               </h2>
-              <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-                If your business still uses Excel, WhatsApp, or paper files to manage employees,
-                you&apos;re probably dealing with daily frustrations that slow your business down.
+              <p className="mt-5 text-lg leading-8 text-slate-300">
+                If your business still uses Excel, WhatsApp, or paper files to manage employees, you&apos;re probably dealing with daily frustrations that slow your business down.
               </p>
-              <p className="mt-4 text-lg font-medium text-[#051536]">
+              <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
                 Managing people shouldn&apos;t slow down your business.
               </p>
             </div>
           </FadeIn>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {problems.map((item, i) => (
               <StaggerItem key={item.text} delay={i * 80}>
-                <div className="flex items-center gap-3 rounded-xl border border-red-200/50 bg-white p-4 transition-all duration-300 hover:shadow-md hover:border-red-300/50">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
-                    <item.icon className="h-5 w-5 text-red-500" />
+                <div className="flex items-start gap-4 rounded-[1.75rem] border border-white/10 bg-white/5 p-5 transition-all duration-300 hover:-translate-y-1 hover:bg-white/10">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-[#60a5fa]/10 text-[#60a5fa]">
+                    <item.icon className="h-5 w-5" />
                   </div>
-                  <span className="text-sm text-[#051536]">{item.text}</span>
+                  <span className="text-sm leading-6 text-slate-100">{item.text}</span>
                 </div>
               </StaggerItem>
             ))}

@@ -90,7 +90,7 @@ export async function createOrganization(
  */
 export async function updateOrganization(
   id: string,
-  updates: Partial<Pick<Organization, 'name' | 'logo_url' | 'primary_color' | 'plan' | 'max_employees'>>
+  updates: Partial<Pick<Organization, 'name' | 'display_name' | 'logo_url' | 'primary_color' | 'plan' | 'max_employees'>>
 ): Promise<Organization | null> {
   const { data, error } = await getSupabase()
     .from('organizations')

@@ -35,39 +35,41 @@ const footerLinks = {
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-border/50 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <footer className="bg-[#020316] text-slate-300">
+      <div className="relative overflow-hidden px-4 py-16 sm:px-6 lg:px-8">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-[#60a5fa]/10 blur-3xl" />
+        <div className="pointer-events-none absolute right-0 bottom-0 h-64 w-64 rounded-full bg-[#ec4899]/10 blur-3xl" />
+
         <FadeIn>
-          <div className="grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="relative z-10 mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
             <div className="lg:col-span-1">
-              <Link href="/" className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#032364]">
-                  <Building2 className="h-5 w-5 text-white" />
+              <Link href="/" className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-gradient-to-br from-[#60a5fa] to-[#ec4899] shadow-lg shadow-[#60a5fa]/20">
+                  <Building2 className="h-6 w-6 text-white" />
                 </div>
-                <span className="text-lg font-bold text-[#051536]">HR Platform</span>
+                <div>
+                  <p className="text-lg font-semibold text-white">HR Platform</p>
+                  <p className="mt-2 max-w-xs text-sm text-slate-400">
+                    Built for Nigerian businesses. Designed to help small businesses grow.
+                  </p>
+                </div>
               </Link>
-              <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-                Built for Nigerian businesses. Designed to help small businesses grow.
-              </p>
-              <div className="mt-4 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Affordable.</span>
-                <span className="text-xs text-muted-foreground">Simple.</span>
-                <span className="text-xs text-muted-foreground">Reliable.</span>
-              </div>
             </div>
 
             {Object.entries(footerLinks).map(([category, links]) => (
               <div key={category}>
-                <h4 className="text-sm font-semibold text-[#051536] mb-4 capitalize">{category}</h4>
-                <ul className="space-y-2.5">
+                <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-slate-300">
+                  {category}
+                </h4>
+                <ul className="space-y-3 text-sm text-slate-400">
                   {links.map((link) => (
                     <li key={link.label}>
                       {link.href.startsWith('#') ? (
-                        <a href={link.href} className="text-sm text-muted-foreground hover:text-[#032364] transition-colors">
+                        <a href={link.href} className="transition-colors hover:text-white">
                           {link.label}
                         </a>
                       ) : (
-                        <Link href={link.href} className="text-sm text-muted-foreground hover:text-[#032364] transition-colors">
+                        <Link href={link.href} className="transition-colors hover:text-white">
                           {link.label}
                         </Link>
                       )}
@@ -79,13 +81,9 @@ export function LandingFooter() {
           </div>
         </FadeIn>
 
-        <div className="border-t border-border/50 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
-            Making HR simple and affordable for every Nigerian business.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} HR Platform. All rights reserved.
-          </p>
+        <div className="relative z-10 mt-12 border-t border-white/10 pt-8 text-sm text-slate-500 sm:flex sm:items-center sm:justify-between">
+          <p>Making HR simple and affordable for every Nigerian business.</p>
+          <p>&copy; {new Date().getFullYear()} HR Platform. All rights reserved.</p>
         </div>
       </div>
     </footer>

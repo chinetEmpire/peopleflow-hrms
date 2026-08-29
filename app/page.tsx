@@ -43,22 +43,22 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f2e9e9]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0e3a94]" />
+      <div className="flex h-screen items-center justify-center bg-[#050816]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#60a5fa]" />
       </div>
     );
   }
 
   if (organization && user && profile) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#f2e9e9]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#0e3a94]" />
+      <div className="flex h-screen items-center justify-center bg-[#050816]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#60a5fa]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#020316] text-white">
       <LandingNavbar />
       <main>
         <HeroSection />

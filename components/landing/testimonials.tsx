@@ -20,14 +20,16 @@ const testimonials = [
 
 export function TestimonialsSection() {
   return (
-    <section className="py-20 sm:py-28 bg-[#051536]">
+    <section className="relative py-20 sm:py-28 bg-[#020316] text-white">
+      <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 rounded-full bg-[#60a5fa]/10 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 bottom-0 h-64 w-64 rounded-full bg-[#ec4899]/10 blur-3xl" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-sm font-medium text-white/60 uppercase tracking-wider mb-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#60a5fa] mb-3">
               Testimonials
             </p>
-            <h2 className="text-3xl font-bold text-white sm:text-4xl">
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
               Businesses Love How Easy HR Has Become
             </h2>
           </div>
@@ -36,7 +38,7 @@ export function TestimonialsSection() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {testimonials.map((item, i) => (
             <StaggerItem key={item.author} delay={i * 120}>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:-translate-y-1">
+              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 backdrop-blur-sm transition-all duration-300 hover:bg-white/10 hover:-translate-y-1">
                 <div className="mb-4 flex gap-1">
                   {[...Array(5)].map((_, j) => (
                     <svg key={j} className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">

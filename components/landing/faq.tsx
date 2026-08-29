@@ -36,12 +36,12 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border-b border-border/50 last:border-0">
+    <div className="border-b border-white/10 last:border-0">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between py-5 text-left transition-colors hover:text-[#032364]"
+        className="flex w-full items-center justify-between py-5 text-left transition-colors hover:text-white"
       >
-        <span className="text-base font-medium text-[#051536] pr-4">{question}</span>
+        <span className="text-base font-medium text-white pr-4">{question}</span>
         <ChevronDown
           className={cn(
             'h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300',
@@ -55,7 +55,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
           open ? 'max-h-40 pb-5' : 'max-h-0'
         )}
       >
-        <p className="text-muted-foreground leading-relaxed">{answer}</p>
+        <p className="text-slate-300 leading-relaxed">{answer}</p>
       </div>
     </div>
   );
@@ -63,21 +63,21 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 
 export function FAQSection() {
   return (
-    <section className="py-20 sm:py-28 bg-white">
+    <section className="py-20 sm:py-28 bg-[#020316] text-white">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <FadeIn>
           <div className="text-center mb-16">
-            <p className="text-sm font-medium text-[#032364] uppercase tracking-wider mb-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#60a5fa] mb-3">
               FAQ
             </p>
-            <h2 className="text-3xl font-bold text-[#051536] sm:text-4xl">
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">
               Frequently Asked Questions
             </h2>
           </div>
         </FadeIn>
 
         <StaggerItem>
-          <div className="rounded-2xl border border-border/50 bg-white p-6 sm:p-8">
+          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 sm:p-8">
             {faqs.map((faq) => (
               <FAQItem key={faq.question} question={faq.question} answer={faq.answer} />
             ))}

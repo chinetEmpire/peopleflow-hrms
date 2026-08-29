@@ -392,7 +392,6 @@ export default function EmployeesPage() {
                       <SelectItem value="employee">Employee</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="hr_admin">HR Admin</SelectItem>
-                      <SelectItem value="super_admin">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

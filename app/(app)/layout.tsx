@@ -213,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const visibleMenu = menuItems.filter((item) => item.roles.includes(profile.role));
   const visibleGeneral = generalItems.filter((item) => item.roles.includes(profile.role));
 
-  const orgName = organization?.name || 'HR Platform';
+  const orgName = organization?.display_name || organization?.name || 'HR Platform';
   const orgLogoUrl = organization?.logo_url || null;
   const primaryColor = organization?.primary_color || '#032364';
 
